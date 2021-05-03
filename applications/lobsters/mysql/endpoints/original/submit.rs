@@ -18,20 +18,25 @@ where
     let user = acting_as.unwrap();
 
     // check that tags are active
+    let select_tags = "SELECT  `tags`.* FROM `tags` \
+     WHERE `tags`.`inactive` = 0 AND `tags`.`tag` IN ('test')";
+    println!("{}", select_tags);
     let (mut c, tag) = c
         .first::<_, my::Row>(
-            "SELECT  `tags`.* FROM `tags` \
-             WHERE `tags`.`inactive` = 0 AND `tags`.`tag` IN ('test')",
+            select_tags,
         )
         .await?;
     let tag = tag.unwrap().get::<u32, _>("id");
 
     if !priming {
         // check that story id isn't already assigned
+        let select_stories = "SELECT  1 AS one FROM `stories` \
+         WHERE `stories`.`short_id` = ?";
+        let log_query = select_stories.replace("?",::std::str::from_utf8(&id[..]).unwrap());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT  1 AS one FROM `stories` \
-                 WHERE `stories`.`short_id` = ?",
+                select_stories,
                 (::std::str::from_utf8(&id[..]).unwrap(),),
             )
             .await?;
@@ -57,13 +62,24 @@ where
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
+    let insert_stories = "INSERT INTO `stories` \
+     (`created_at`, `user_id`, `title`, \
+     `description`, `short_id`, `upvotes`, `hotness`, \
+     `markeddown_description`) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    let log_query = insert_stories
+    .replace("?", &(chrono::Local::now().naive_local()).to_string())
+    .replace("?", &user.to_string())
+    .replace("?", &title)
+    .replace("?", "to infinity")
+    .replace("?", ::std::str::from_utf8(&id[..]).unwrap())
+    .replace("?", "1")
+    .replace("?", "-19216.2884921")
+    .replace("?", "<p>to infinity</p>\n");
+    println!("{}", log_query);
     let q = c
         .prep_exec(
-            "INSERT INTO `stories` \
-             (`created_at`, `user_id`, `title`, \
-             `description`, `short_id`, `upvotes`, `hotness`, \
-             `markeddown_description`) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            insert_stories,
             (
                 chrono::Local::now().naive_local(),
                 user,
@@ -79,74 +95,107 @@ where
     let story = q.last_insert_id().unwrap();
     let mut c = q.drop_result().await?;
 
+    let insert_taggings = "INSERT INTO `taggings` (`story_id`, `tag_id`) \
+     VALUES (?, ?)";
+    let mut log_query = insert_taggings
+    .replace("?", &story.to_string())
+    .replace("?", &tag.unwrap().to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO `taggings` (`story_id`, `tag_id`) \
-             VALUES (?, ?)",
+            insert_taggings,
             (story, tag),
         )
         .await?;
 
     let key = format!("user:{}:stories_submitted", user);
+    let insert_keystore = "INSERT INTO keystores (`key`, `value`) \
+     VALUES (?, ?) \
+     ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
+    log_query = insert_keystore
+    .replace("?", &key)
+    .replace("?", "1");
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO keystores (`key`, `value`) \
-             VALUES (?, ?) \
-             ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1",
+            insert_keystore,
             (key, 1),
         )
         .await?;
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);
+        let select_keystore = "SELECT  `keystores`.* \
+         FROM `keystores` \
+         WHERE `keystores`.`key` = ?";
+        log_query = select_keystore.replace("?", &key);
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT  `keystores`.* \
-                 FROM `keystores` \
-                 WHERE `keystores`.`key` = ?",
+                select_keystore,
                 (key,),
             )
             .await?;
 
+        let select_votes = "SELECT  `votes`.* FROM `votes` \
+         WHERE `votes`.`user_id` = ? \
+         AND `votes`.`story_id` = ? \
+         AND `votes`.`comment_id` IS NULL";
+        log_query = select_votes
+        .replace("?", &user.to_string())
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT  `votes`.* FROM `votes` \
-                 WHERE `votes`.`user_id` = ? \
-                 AND `votes`.`story_id` = ? \
-                 AND `votes`.`comment_id` IS NULL",
+                select_votes,
                 (user, story),
             )
             .await?;
     }
 
+    let insert_votes = "INSERT INTO `votes` \
+     (`user_id`, `story_id`, `vote`) \
+     VALUES (?, ?, ?)";
+    log_query = insert_votes
+    .replace("?", &user.to_string())
+    .replace("?", &story.to_string())
+    .replace("?", "1");
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO `votes` (`user_id`, `story_id`, `vote`) \
-             VALUES (?, ?, ?)",
+            insert_votes,
             (user, story, 1),
         )
         .await?;
 
     if !priming {
+        let select_comments = "SELECT \
+         `comments`.`upvotes`, \
+         `comments`.`downvotes` \
+         FROM `comments` \
+         JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
+         WHERE `comments`.`story_id` = ? \
+         AND `comments`.`user_id` <> `stories`.`user_id`";
+        log_query = select_comments.replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT \
-                 `comments`.`upvotes`, \
-                 `comments`.`downvotes` \
-                 FROM `comments` \
-                 JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
-                 WHERE `comments`.`story_id` = ? \
-                 AND `comments`.`user_id` <> `stories`.`user_id`",
+                select_comments,
                 (story,),
             )
             .await?;
 
         // why oh why is story hotness *updated* here?!
+        let update_hotness = "UPDATE `stories` \
+         SET `hotness` = ? \
+         WHERE `stories`.`id` = ?";
+        log_query = update_hotness
+        .replace("?", "-19216.5479744")
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "UPDATE `stories` \
-                 SET `hotness` = ? \
-                 WHERE `stories`.`id` = ?",
+                update_hotness,
                 (-19216.5479744, story),
             )
             .await?;
@@ -154,3 +203,4 @@ where
 
     Ok((c, false))
 }
+

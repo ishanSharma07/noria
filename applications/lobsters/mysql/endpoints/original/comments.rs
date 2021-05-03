@@ -13,15 +13,15 @@ where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
     let c = c.await?;
+    let select_comments = "SELECT  `comments`.* \
+     FROM `comments` \
+     WHERE `comments`.`is_deleted` = 0 \
+     AND `comments`.`is_moderated` = 0 \
+     ORDER BY id DESC \
+     LIMIT 40 OFFSET 0";
+    println!("{}", select_comments);
     let comments = c
-        .query(&format!(
-            "SELECT  `comments`.* \
-             FROM `comments` \
-             WHERE `comments`.`is_deleted` = 0 \
-             AND `comments`.`is_moderated` = 0 \
-             ORDER BY id DESC \
-             LIMIT 40 OFFSET 0",
-        ))
+        .query(select_comments)
         .await?;
 
     let (mut c, (comments, users, stories)) = comments
@@ -41,14 +41,16 @@ where
         let args: Vec<_> = iter::once(&uid as &_)
             .chain(stories.iter().map(|c| c as &_))
             .collect();
+        let select_one = &format!(
+                "SELECT 1 FROM hidden_stories \
+                 WHERE user_id = ? \
+                 AND hidden_stories.story_id IN ({})",
+            params
+        );
+        println!("{}", select_one);
         c = c
             .drop_exec(
-                &format!(
-                    "SELECT 1 FROM hidden_stories \
-                     WHERE user_id = ? \
-                     AND hidden_stories.story_id IN ({})",
-                    params
-                ),
+                select_one,
                 args,
             )
             .await?;
@@ -59,12 +61,14 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(",");
+    let select_users = &format!(
+        "SELECT `users`.* FROM `users` \
+         WHERE `users`.`id` IN ({})",
+        users
+    );
+    println!("{}", select_users);
     c = c
-        .drop_query(&format!(
-            "SELECT `users`.* FROM `users` \
-             WHERE `users`.`id` IN ({})",
-            users
-        ))
+        .drop_query(select_users)
         .await?;
 
     let stories = stories
@@ -73,12 +77,14 @@ where
         .collect::<Vec<_>>()
         .join(",");
 
+    let select_stories = &format!(
+        "SELECT  `stories`.* FROM `stories` \
+         WHERE `stories`.`id` IN ({})",
+        stories
+    );
+    println!("{}", select_stories);
     let stories = c
-        .query(&format!(
-            "SELECT  `stories`.* FROM `stories` \
-             WHERE `stories`.`id` IN ({})",
-            stories
-        ))
+        .query(select_stories)
         .await?;
 
     let (mut c, authors) = stories
@@ -90,18 +96,27 @@ where
 
     if let Some(uid) = acting_as {
         let params = comments.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let comments: Vec<_> = iter::once(&uid as &_)
-            .chain(comments.iter().map(|c| c as &_))
+        let comments: Vec<&UserId> = iter::once(&uid as &UserId)
+            .chain(comments.iter().map(|c| c as &UserId))
             .collect();
-
+        let select_votes = &format!(
+            "SELECT `votes`.* FROM `votes` \
+             WHERE `votes`.`user_id` = ? \
+             AND `votes`.`comment_id` IN ({})",
+            params
+        );
+        let mut comments_str = String::from("");
+        for &comment in comments.iter(){
+            comments_str.push_str(&comment.to_string());
+            comments_str.push(',');
+        }
+        // Delete last ','
+        comments_str.pop();
+        let log_query = select_votes.replace("?", &comments_str);
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                &format!(
-                    "SELECT `votes`.* FROM `votes` \
-                     WHERE `votes`.`user_id` = ? \
-                     AND `votes`.`comment_id` IN ({})",
-                    params
-                ),
+                select_votes,
                 comments,
             )
             .await?;
@@ -113,14 +128,16 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(",");
-
-    c = c
-        .drop_query(&format!(
+    let select_usersv2 = &format!(
             "SELECT  `users`.* FROM `users` \
              WHERE `users`.`id` IN ({})",
             authors
-        ))
+        );
+    println!("{}", select_usersv2);
+    c = c
+        .drop_query(select_usersv2)
         .await?;
 
     Ok((c, true))
 }
+

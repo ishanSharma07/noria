@@ -14,6 +14,11 @@ where
 {
     let c = c.await?;
     let user = acting_as.unwrap();
+    let select_stories = "SELECT `stories`.* \
+     FROM `stories` \
+     WHERE `stories`.`short_id` = ?";
+    let mut log_query = select_stories.replace("?",::std::str::from_utf8(&story[..]).unwrap());
+    println!("{}", log_query);
     let (mut c, mut story) = c
         .prep_exec(
             "SELECT `stories`.* \
@@ -29,13 +34,18 @@ where
     let author = story.get::<u32, _>("user_id").unwrap();
     let score = story.get::<f64, _>("hotness").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
+    let select_votes ="SELECT `votes`.* \
+     FROM `votes` \
+     WHERE `votes`.`user_id` = ? \
+     AND `votes`.`story_id` = ? \
+     AND `votes`.`comment_id` IS NULL";
+    log_query = select_votes
+    .replace("?", &user.to_string())
+    .replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT  `votes`.* \
-             FROM `votes` \
-             WHERE `votes`.`user_id` = ? \
-             AND `votes`.`story_id` = ? \
-             AND `votes`.`comment_id` IS NULL",
+            select_votes,
             (user, story),
         )
         .await?;
@@ -45,12 +55,20 @@ where
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
+    let insert_votes = "INSERT INTO `votes` \
+     (`user_id`, `story_id`, `vote`) \
+     VALUES (?, ?, ?)";
+    log_query = insert_votes
+    .replace("?", &user.to_string())
+    .replace("?", &story.to_string())
+    .replace("?", match v {
+        Vote::Up => "1",
+        Vote::Down => "0",
+    });
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO `votes` \
-             (`user_id`, `story_id`, `vote`) \
-             VALUES \
-             (?, ?, ?)",
+            insert_votes,
             (
                 user,
                 story,
@@ -62,50 +80,63 @@ where
         )
         .await?;
 
+    let update_users = &format!(
+        "UPDATE `users` \
+         SET `users`.`karma` = `users`.`karma` {} \
+         WHERE `users`.`id` = ?",
+        match v {
+            Vote::Up => "+ 1",
+            Vote::Down => "- 1",
+        }
+    );
+    log_query = update_users.replace("?", &author.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            &format!(
-                "UPDATE `users` \
-                 SET `users`.`karma` = `users`.`karma` {} \
-                 WHERE `users`.`id` = ?",
-                match v {
-                    Vote::Up => "+ 1",
-                    Vote::Down => "- 1",
-                }
-            ),
+            update_users,
             (author,),
         )
         .await?;
 
     // get all the stuff needed to compute updated hotness
+    let select_tags = "SELECT `tags`.* \
+     FROM `tags` \
+     INNER JOIN `taggings` \
+     ON `tags`.`id` = `taggings`.`tag_id` \
+     WHERE `taggings`.`story_id` = ?";
+    log_query = select_tags.replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT `tags`.* \
-             FROM `tags` \
-             INNER JOIN `taggings` ON `tags`.`id` = `taggings`.`tag_id` \
-             WHERE `taggings`.`story_id` = ?",
+            select_tags,
             (story,),
         )
         .await?;
 
+    let select_comments = "SELECT \
+     `comments`.`upvotes`, \
+     `comments`.`downvotes` \
+     FROM `comments` \
+     JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
+     WHERE `comments`.`story_id` = ? \
+     AND `comments`.`user_id` <> `stories`.`user_id`";
+    log_query = select_comments.replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT \
-             `comments`.`upvotes`, \
-             `comments`.`downvotes` \
-             FROM `comments` \
-             JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
-             WHERE `comments`.`story_id` = ? \
-             AND `comments`.`user_id` <> `stories`.`user_id`",
+            select_comments,
             (story,),
         )
         .await?;
 
+    let select_storiesv2 = "SELECT `stories`.`id` \
+     FROM `stories` \
+     WHERE `stories`.`merged_story_id` = ?";
+    log_query = select_storiesv2.replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT `stories`.`id` \
-             FROM `stories` \
-             WHERE `stories`.`merged_story_id` = ?",
+            select_storiesv2,
             (story,),
         )
         .await?;
@@ -115,23 +146,32 @@ where
     // frontpage, but we're okay with using a more basic
     // upvote/downvote ratio thingy. See Story::calculated_hotness
     // in the lobsters source for details.
+    let update_stories = &format!(
+        "UPDATE stories SET \
+         stories.upvotes = stories.upvotes {}, \
+         stories.downvotes = stories.downvotes {}, \
+         stories.hotness = ? \
+         WHERE stories.id = ?",
+        match v {
+            Vote::Up => "+ 1",
+            Vote::Down => "+ 0",
+        },
+        match v {
+            Vote::Up => "+ 0",
+            Vote::Down => "+ 1",
+        },
+    );
+    log_query = update_stories
+     .replace("?", &(score
+         - match v {
+             Vote::Up => 1.0,
+             Vote::Down => -1.0,
+         }).to_string())
+     .replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            &format!(
-                "UPDATE stories SET \
-                 stories.upvotes = stories.upvotes {}, \
-                 stories.downvotes = stories.downvotes {}, \
-                 stories.hotness = ? \
-                 WHERE stories.id = ?",
-                match v {
-                    Vote::Up => "+ 1",
-                    Vote::Down => "+ 0",
-                },
-                match v {
-                    Vote::Up => "+ 0",
-                    Vote::Down => "+ 1",
-                },
-            ),
+            update_stories,
             (
                 score
                     - match v {
@@ -145,3 +185,4 @@ where
 
     Ok((c, false))
 }
+

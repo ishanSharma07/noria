@@ -17,11 +17,14 @@ where
 {
     let c = c.await?;
     let user = acting_as.unwrap();
+    let select_stories = "SELECT `stories`.* \
+     FROM `stories` \
+     WHERE `stories`.`short_id` = ?";
+    let mut log_query = select_stories.replace("?",::std::str::from_utf8(&story[..]).unwrap());
+    println!("{}", log_query);
     let (mut c, story) = c
         .first_exec::<_, _, my::Row>(
-            "SELECT `stories`.* \
-             FROM `stories` \
-             WHERE `stories`.`short_id` = ?",
+            select_stories,
             (::std::str::from_utf8(&story[..]).unwrap(),),
         )
         .await?;
@@ -31,9 +34,12 @@ where
     let story = story.get::<u32, _>("id").unwrap();
 
     if !priming {
+        let select_users = "SELECT `users`.* FROM `users` WHERE `users`.`id` = ?";
+        log_query = select_users.replace("?", &author.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `users`.* FROM `users` WHERE `users`.`id` = ?",
+                select_users,
                 (author,),
             )
             .await?;
@@ -41,11 +47,15 @@ where
 
     let parent = if let Some(parent) = parent {
         // check that parent exists
+        let select_comments = "SELECT  `comments`.* FROM `comments` \
+         WHERE `comments`.`story_id` = ? \
+         AND `comments`.`short_id` = ?";
+        log_query = select_comments.replacen("?", &story.to_string(), 1);
+        log_query = log_query.replacen("?", ::std::str::from_utf8(&parent[..]).unwrap(), 1);
+        println!("{}", log_query);
         let (x, p) = c
             .first_exec::<_, _, my::Row>(
-                "SELECT  `comments`.* FROM `comments` \
-                 WHERE `comments`.`story_id` = ? \
-                 AND `comments`.`short_id` = ?",
+                select_comments,
                 (story, ::std::str::from_utf8(&parent[..]).unwrap()),
             )
             .await?;
@@ -72,11 +82,14 @@ where
     // parent to ensure we don't double-post accidentally
 
     if !priming {
+        let select_one = "SELECT  1 AS one FROM `comments` \
+         WHERE `comments`.`short_id` = ?";
+        log_query = select_one.replace("?", ::std::str::from_utf8(&id[..]).unwrap());
+        println!("{}", log_query);
         // check that short id is available
         c = c
             .drop_exec(
-                "SELECT  1 AS one FROM `comments` \
-                 WHERE `comments`.`short_id` = ?",
+                select_one,
                 (::std::str::from_utf8(&id[..]).unwrap(),),
             )
             .await?;
@@ -88,13 +101,30 @@ where
     // but let's be nice to it
     let now = chrono::Local::now().naive_local();
     let q = if let Some((parent, thread)) = parent {
+        let insert_comments = "INSERT INTO `comments` \
+         (`created_at`, `updated_at`, `short_id`, `story_id`, \
+         `user_id`, `parent_comment_id`, `thread_id`, \
+         `comment`, `upvotes`, `confidence`, \
+         `markeddown_comment`) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        log_query = insert_comments.replacen("?", &now.to_string(), 1);
+        log_query = log_query.replacen("?", &now.to_string(), 1);
+        log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
+        log_query = log_query.replacen("?", &story.to_string(), 1);
+        log_query = log_query.replacen("?", &user.to_string(), 1);
+        log_query = log_query.replacen("?", &parent.to_string(), 1);
+        if let Some(t) = thread{
+            log_query = log_query.replacen("?", &t.to_string(), 1);
+        } else{
+            log_query = log_query.replacen("?", "NULL", 1);
+        }
+        log_query = log_query.replacen("?", "moar benchmarking", 1);
+        log_query = log_query.replacen("?", "1", 1);
+        log_query = log_query.replacen("?", "0.1828847834138887", 1);
+        log_query = log_query.replacen("?", "<p>moar benchmarking</p>", 1);
+        println!("{}", log_query);
         c.prep_exec(
-            "INSERT INTO `comments` \
-             (`created_at`, `updated_at`, `short_id`, `story_id`, \
-             `user_id`, `parent_comment_id`, `thread_id`, \
-             `comment`, `upvotes`, `confidence`, \
-             `markeddown_comment`) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            insert_comments,
             (
                 now,
                 now,
@@ -111,12 +141,23 @@ where
         )
         .await?
     } else {
+        let insert_comments = "INSERT INTO `comments` \
+         (`created_at`, `updated_at`, `short_id`, `story_id`, \
+         `user_id`, `comment`, `upvotes`, `confidence`, \
+         `markeddown_comment`) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+         log_query = insert_comments.replacen("?", &now.to_string(), 1);
+         log_query = log_query.replacen("?", &now.to_string(), 1);
+         log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
+         log_query = log_query.replacen("?", &story.to_string(), 1);
+         log_query = log_query.replacen("?", &user.to_string(), 1);
+         log_query = log_query.replacen("?", "moar benchmarking", 1);
+         log_query = log_query.replacen("?", "1", 1);
+         log_query = log_query.replacen("?", "0.1828847834138887", 1);
+         log_query = log_query.replacen("?", "<p>moar benchmarking</p>\n", 1);
+        println!("{}", log_query);
         c.prep_exec(
-            "INSERT INTO `comments` \
-             (`created_at`, `updated_at`, `short_id`, `story_id`, \
-             `user_id`, `comment`, `upvotes`, `confidence`, \
-             `markeddown_comment`) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            insert_comments,
             (
                 now,
                 now,
@@ -136,114 +177,151 @@ where
 
     if !priming {
         // but why?!
+        let select_votes = "SELECT  `votes`.* FROM `votes` \
+         WHERE `votes`.`user_id` = ? \
+         AND `votes`.`story_id` = ? \
+         AND `votes`.`comment_id` = ?";
+        log_query = select_votes.replacen("?", &user.to_string(), 1);
+        log_query = log_query.replacen("?", &story.to_string(), 1);
+        log_query = log_query.replacen("?", &comment.to_string(), 1);
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT  `votes`.* FROM `votes` \
-                 WHERE `votes`.`user_id` = ? \
-                 AND `votes`.`story_id` = ? \
-                 AND `votes`.`comment_id` = ?",
+                select_votes,
                 (user, story, comment),
             )
             .await?;
     }
 
+    let insert_votes = "INSERT INTO `votes` \
+     (`user_id`, `story_id`, `comment_id`, `vote`) \
+     VALUES (?, ?, ?, ?)";
+    log_query = insert_votes.replacen("?", &user.to_string(), 1);
+    log_query = log_query.replacen("?", &story.to_string(), 1);
+    log_query = log_query.replacen("?", &comment.to_string(), 1);
+    log_query = log_query.replacen("?", "1", 1);
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO `votes` \
-             (`user_id`, `story_id`, `comment_id`, `vote`) \
-             VALUES (?, ?, ?, ?)",
+            insert_votes,
             (user, story, comment, 1),
         )
         .await?;
 
+    let select_storiesv2 = "SELECT `stories`.`id` \
+     FROM `stories` \
+     WHERE `stories`.`merged_story_id` = ?";
+    log_query = select_storiesv2.replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT `stories`.`id` \
-             FROM `stories` \
-             WHERE `stories`.`merged_story_id` = ?",
+            select_storiesv2,
             (story,),
         )
         .await?;
 
+    let select_commentsv2 = "SELECT `comments`.* \
+     FROM `comments` \
+     WHERE `comments`.`story_id` = ? \
+     ORDER BY \
+     (upvotes - downvotes) < 0 ASC, \
+     confidence DESC";
+    log_query = select_commentsv2.replace("?", &story.to_string());
+    println!("{}", log_query);
     // why are these ordered?
     let (mut c, count) = c
         .prep_exec(
-            "SELECT `comments`.* \
-             FROM `comments` \
-             WHERE `comments`.`story_id` = ? \
-             ORDER BY \
-             (upvotes - downvotes) < 0 ASC, \
-             confidence DESC",
+            select_commentsv2,
             (story,),
         )
         .await?
         .reduce_and_drop(0, |rows, _| rows + 1)
         .await?;
 
+    let udpate_stories = "UPDATE `stories` \
+                                     SET `comments_count` = ?
+                                     WHERE `stories`.`id` = ?";
+    log_query = udpate_stories.replacen("?", &count.to_string(), 1);
+    log_query = log_query.replacen("?", &story.to_string(), 1);
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "UPDATE `stories` \
-                                             SET `comments_count` = ?
-                                             WHERE `stories`.`id` = ?",
+            udpate_stories,
             (count, story),
         )
         .await?;
 
     if !priming {
         // get all the stuff needed to compute updated hotness
+        let select_tags = "SELECT `tags`.* \
+         FROM `tags` \
+         INNER JOIN `taggings` \
+         ON `tags`.`id` = `taggings`.`tag_id` \
+         WHERE `taggings`.`story_id` = ?";
+        log_query = select_tags.replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `tags`.* \
-                 FROM `tags` \
-                 INNER JOIN `taggings` \
-                 ON `tags`.`id` = `taggings`.`tag_id` \
-                 WHERE `taggings`.`story_id` = ?",
+                select_tags,
                 (story,),
             )
             .await?;
-
+        let select_commentsv3 = "SELECT \
+         `comments`.`upvotes`, \
+         `comments`.`downvotes` \
+         FROM `comments` \
+         JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
+         WHERE `comments`.`story_id` = ? \
+         AND `comments`.`user_id` <> `stories`.`user_id`";
+        log_query = select_commentsv3.replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT \
-                 `comments`.`upvotes`, \
-                 `comments`.`downvotes` \
-                 FROM `comments` \
-                 JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
-                 WHERE `comments`.`story_id` = ? \
-                 AND `comments`.`user_id` <> `stories`.`user_id`",
+                select_commentsv3,
                 (story,),
             )
             .await?;
-
+        let select_storiesv3 = "SELECT `stories`.`id` \
+         FROM `stories` \
+         WHERE `stories`.`merged_story_id` = ?";
+        log_query = select_storiesv3.replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `stories`.`id` \
-                 FROM `stories` \
-                 WHERE `stories`.`merged_story_id` = ?",
+                select_storiesv3,
                 (story,),
             )
             .await?;
     }
 
     // why oh why is story hotness *updated* here?!
+    let update_stories = "UPDATE `stories` \
+     SET `hotness` = ? \
+     WHERE `stories`.`id` = ?";
+    log_query = update_stories.replacen("?", &(hotness - 1.0).to_string(), 1);
+    log_query = log_query.replacen("?", &story.to_string(), 1);
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "UPDATE `stories` \
-             SET `hotness` = ? \
-             WHERE `stories`.`id` = ?",
+            update_stories,
             (hotness - 1.0, story),
         )
         .await?;
 
     let key = format!("user:{}:comments_posted", user);
+    let insert_keystore = "INSERT INTO keystores (`key`, `value`) \
+     VALUES (?, ?) \
+     ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
+    log_query = insert_keystore.replacen("?", &key, 1);
+    log_query = log_query.replacen("?", "1", 1);
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "INSERT INTO keystores (`key`, `value`) \
-             VALUES (?, ?) \
-             ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1",
+            insert_keystore,
             (key, 1),
         )
         .await?;
 
     Ok((c, false))
 }
+

@@ -15,11 +15,14 @@ where
 {
     // XXX: at the end there are also a bunch of repeated, seemingly superfluous queries
     let c = c.await?;
+    let select_stories = "SELECT `stories`.* \
+     FROM `stories` \
+     WHERE `stories`.`short_id` = ?";
+    let mut log_query = select_stories.replace("?",::std::str::from_utf8(&id[..]).unwrap());
+    println!("{}", log_query);
     let (mut c, mut story) = c
         .prep_exec(
-            "SELECT `stories`.* \
-             FROM `stories` \
-             WHERE `stories`.`short_id` = ?",
+            select_stories,
             (::std::str::from_utf8(&id[..]).unwrap(),),
         )
         .await?
@@ -28,9 +31,12 @@ where
     let story = story.swap_remove(0);
     let author = story.get::<u32, _>("user_id").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
+    let select_users = "SELECT `users`.* FROM `users` WHERE `users`.`id` = ?";
+    log_query = select_users.replace("?", &author.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT `users`.* FROM `users` WHERE `users`.`id` = ?",
+            select_users,
             (author,),
         )
         .await?;
@@ -39,31 +45,48 @@ where
     if let Some(uid) = acting_as {
         // keep track of when the user last saw this story
         // NOTE: *technically* the update only happens at the end...
+        let select_ribbon = "SELECT  `read_ribbons`.* \
+             FROM `read_ribbons` \
+             WHERE `read_ribbons`.`user_id` = ? \
+             AND `read_ribbons`.`story_id` = ?";
+        log_query = select_ribbon
+        .replace("?", &uid.to_string())
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         let (x, rr) = c
             .first_exec::<_, _, my::Row>(
-                "SELECT  `read_ribbons`.* \
-                     FROM `read_ribbons` \
-                     WHERE `read_ribbons`.`user_id` = ? \
-                     AND `read_ribbons`.`story_id` = ?",
+                select_ribbon,
                 (&uid, &story),
             )
             .await?;
         let now = chrono::Local::now().naive_local();
         c = match rr {
             None => {
+                let insert_ribbon = "INSERT INTO `read_ribbons` \
+                     (`created_at`, `updated_at`, `user_id`, `story_id`) \
+                     VALUES (?, ?, ?, ?)";
+                log_query = insert_ribbon
+                .replace("?", &now.to_string())
+                .replace("?", &now.to_string())
+                .replace("?", &uid.to_string())
+                .replace("?", &story.to_string());
+                println!("{}", log_query);
                 x.drop_exec(
-                    "INSERT INTO `read_ribbons` \
-                         (`created_at`, `updated_at`, `user_id`, `story_id`) \
-                         VALUES (?, ?, ?, ?)",
+                    insert_ribbon,
                     (now, now, uid, story),
                 )
                 .await?
             }
             Some(rr) => {
+                let update_ribbon = "UPDATE `read_ribbons` \
+                     SET `read_ribbons`.`updated_at` = ? \
+                     WHERE `read_ribbons`.`id` = ?";
+                log_query = update_ribbon
+                .replace("?", &now.to_string())
+                .replace("?", &(rr.get::<u32, _>("id").unwrap()).to_string());
+                println!("{}", log_query);
                 x.drop_exec(
-                    "UPDATE `read_ribbons` \
-                         SET `read_ribbons`.`updated_at` = ? \
-                         WHERE `read_ribbons`.`id` = ?",
+                    update_ribbon,
                     (now, rr.get::<u32, _>("id").unwrap()),
                 )
                 .await?
@@ -72,23 +95,31 @@ where
     }
 
     // XXX: probably not drop here, but we know we have no merged stories
+    let select_stories = "SELECT `stories`.`id` \
+     FROM `stories` \
+     WHERE `stories`.`merged_story_id` = ?";
+    log_query = select_stories
+    .replace("?", &story.to_string());
+    println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT `stories`.`id` \
-             FROM `stories` \
-             WHERE `stories`.`merged_story_id` = ?",
+            select_stories,
             (story,),
         )
         .await?;
 
+    let select_comments = "SELECT `comments`.* \
+     FROM `comments` \
+     WHERE `comments`.`story_id` = ? \
+     ORDER BY \
+     (CAST(upvotes AS signed) - CAST(downvotes AS signed)) < 0 ASC, \
+     confidence DESC";
+    log_query = select_comments
+    .replace("?", &story.to_string());
+    println!("{}", log_query);
     let comments = c
         .prep_exec(
-            "SELECT `comments`.* \
-             FROM `comments` \
-             WHERE `comments`.`story_id` = ? \
-             ORDER BY \
-             (CAST(upvotes AS signed) - CAST(downvotes AS signed)) < 0 ASC, \
-             confidence DESC",
+            select_comments,
             (story,),
         )
         .await?;
@@ -110,11 +141,13 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(", ");
+    let select_usersv2 = &format!(
+        "SELECT `users`.* FROM `users` WHERE `users`.`id` IN ({})",
+        users
+    );
+    println!("{}", select_usersv2);
     c = c
-        .drop_query(&format!(
-            "SELECT `users`.* FROM `users` WHERE `users`.`id` IN ({})",
-            users
-        ))
+        .drop_query(select_usersv2)
         .await?;
 
     // get comment votes
@@ -124,50 +157,71 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(", ");
+    let select_votes = &format!(
+        "SELECT `votes`.* FROM `votes` WHERE `votes`.`comment_id` IN ({})",
+        comments
+    );
+    println!("{}", select_votes);
     c = c
-        .drop_query(&format!(
-            "SELECT `votes`.* FROM `votes` WHERE `votes`.`comment_id` IN ({})",
-            comments
-        ))
+        .drop_query(select_votes)
         .await?;
 
     // NOTE: lobste.rs here fetches the user list again. unclear why?
     if let Some(uid) = acting_as {
+        let select_votesv2 ="SELECT `votes`.* \
+         FROM `votes` \
+         WHERE `votes`.`user_id` = ? \
+         AND `votes`.`story_id` = ? \
+         AND `votes`.`comment_id` IS NULL";
+        log_query = select_votesv2
+        .replace("?", &uid.to_string())
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `votes`.* \
-                 FROM `votes` \
-                 WHERE `votes`.`user_id` = ? \
-                 AND `votes`.`story_id` = ? \
-                 AND `votes`.`comment_id` IS NULL",
+                select_votesv2,
                 (uid, story),
             )
             .await?;
+        let select_hidden ="SELECT `hidden_stories`.* \
+         FROM `hidden_stories` \
+         WHERE `hidden_stories`.`user_id` = ? \
+         AND `hidden_stories`.`story_id` = ?";
+        log_query = select_hidden
+        .replace("?", &uid.to_string())
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `hidden_stories`.* \
-                 FROM `hidden_stories` \
-                 WHERE `hidden_stories`.`user_id` = ? \
-                 AND `hidden_stories`.`story_id` = ?",
+                select_hidden,
                 (uid, story),
             )
             .await?;
+        let select_saved ="SELECT `saved_stories`.* \
+         FROM `saved_stories` \
+         WHERE `saved_stories`.`user_id` = ? \
+         AND `saved_stories`.`story_id` = ?";
+        log_query = select_saved
+        .replace("?", &uid.to_string())
+        .replace("?", &story.to_string());
+        println!("{}", log_query);
         c = c
             .drop_exec(
-                "SELECT `saved_stories`.* \
-                 FROM `saved_stories` \
-                 WHERE `saved_stories`.`user_id` = ? \
-                 AND `saved_stories`.`story_id` = ?",
+                select_saved,
                 (uid, story),
             )
             .await?;
     }
 
+    let select_taggings ="SELECT `taggings`.* \
+     FROM `taggings` \
+     WHERE `taggings`.`story_id` = ?";
+    log_query = select_taggings
+    .replace("?", &story.to_string());
+    println!("{}", log_query);
     let taggings = c
         .prep_exec(
-            "SELECT `taggings`.* \
-             FROM `taggings` \
-             WHERE `taggings`.`story_id` = ?",
+            select_taggings,
             (story,),
         )
         .await?;
@@ -184,12 +238,18 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(", ");
+
+    let select_tags =&format!(
+        "SELECT `tags`.* FROM `tags` WHERE `tags`.`id` IN ({})",
+        tags
+    );
+    log_query = select_tags
+    .replace("?", &story.to_string());
+    println!("{}", log_query);
     let c = c
-        .drop_query(&format!(
-            "SELECT `tags`.* FROM `tags` WHERE `tags`.`id` IN ({})",
-            tags
-        ))
+        .drop_query(select_tags)
         .await?;
 
     Ok((c, true))
 }
+

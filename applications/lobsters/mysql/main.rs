@@ -208,19 +208,25 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Login => {
                         let c = c.await?;
+                        let select_query = "SELECT 1 as one FROM `users` WHERE `users`.`username` = ?";
+                        let log_select = select_query.replace("?", &acting_as.unwrap().to_string());
+                        println!("{}", log_select);
                         let (mut c, user) = c
                             .first_exec::<_, _, my::Row>(
-                                "SELECT 1 as one FROM `users` WHERE `users`.`username` = ?",
-                                (format!("user{}", acting_as.unwrap()),),
+                                log_select,
+                                (),
                             )
                             .await?;
 
                         if user.is_none() {
                             let uid = acting_as.unwrap();
+                            let insert_query = "INSERT INTO `users` (`username`) VALUES (?)";
+                            let log_insert = insert_query.replace("?", &uid.to_string());
+                            println!("{}", log_insert);
                             c = c
                                 .drop_exec(
-                                    "INSERT INTO `users` (`username`) VALUES (?)",
-                                    (format!("user{}", uid),),
+                                    log_insert,
+                                    (),
                                 )
                                 .await?;
                         }
