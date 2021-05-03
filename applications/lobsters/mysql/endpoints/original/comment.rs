@@ -154,7 +154,7 @@ where
          log_query = log_query.replacen("?", "'moar benchmarking'", 1);
          log_query = log_query.replacen("?", "1", 1);
          log_query = log_query.replacen("?", "0.1828847834138887", 1);
-         log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\n'", 1);
+         log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\\n'", 1);
         println!("{}", log_query);
         c.prep_exec(
             insert_comments,

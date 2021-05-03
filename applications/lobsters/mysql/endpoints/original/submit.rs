@@ -75,7 +75,7 @@ where
     .replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1)
     .replacen("?", "1", 1)
     .replacen("?", "-19216.2884921", 1)
-    .replacen("?", "'<p>to infinity</p>\n'", 1);
+    .replacen("?", "'<p>to infinity</p>\\n'", 1);
     println!("{}", log_query);
     let q = c
         .prep_exec(
