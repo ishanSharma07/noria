@@ -50,8 +50,8 @@ where
              WHERE `read_ribbons`.`user_id` = ? \
              AND `read_ribbons`.`story_id` = ?";
         log_query = select_ribbon
-        .replace("?", &uid.to_string())
-        .replace("?", &story.to_string());
+        .replacen("?", &uid.to_string(), 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         let (x, rr) = c
             .first_exec::<_, _, my::Row>(
@@ -66,10 +66,10 @@ where
                      (`created_at`, `updated_at`, `user_id`, `story_id`) \
                      VALUES (?, ?, ?, ?)";
                 log_query = insert_ribbon
-                .replace("?", &now.to_string())
-                .replace("?", &now.to_string())
-                .replace("?", &uid.to_string())
-                .replace("?", &story.to_string());
+                .replacen("?", &now.to_string(), 1)
+                .replacen("?", &now.to_string(), 1)
+                .replacen("?", &uid.to_string(), 1)
+                .replacen("?", &story.to_string(), 1);
                 println!("{}", log_query);
                 x.drop_exec(
                     insert_ribbon,
@@ -82,8 +82,8 @@ where
                      SET `read_ribbons`.`updated_at` = ? \
                      WHERE `read_ribbons`.`id` = ?";
                 log_query = update_ribbon
-                .replace("?", &now.to_string())
-                .replace("?", &(rr.get::<u32, _>("id").unwrap()).to_string());
+                .replacen("?", &now.to_string(), 1)
+                .replacen("?", &(rr.get::<u32, _>("id").unwrap()).to_string(), 1);
                 println!("{}", log_query);
                 x.drop_exec(
                     update_ribbon,
@@ -174,8 +174,8 @@ where
          AND `votes`.`story_id` = ? \
          AND `votes`.`comment_id` IS NULL";
         log_query = select_votesv2
-        .replace("?", &uid.to_string())
-        .replace("?", &story.to_string());
+        .replacen("?", &uid.to_string(), 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -188,8 +188,8 @@ where
          WHERE `hidden_stories`.`user_id` = ? \
          AND `hidden_stories`.`story_id` = ?";
         log_query = select_hidden
-        .replace("?", &uid.to_string())
-        .replace("?", &story.to_string());
+        .replacen("?", &uid.to_string(), 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -202,8 +202,8 @@ where
          WHERE `saved_stories`.`user_id` = ? \
          AND `saved_stories`.`story_id` = ?";
         log_query = select_saved
-        .replace("?", &uid.to_string())
-        .replace("?", &story.to_string());
+        .replacen("?", &uid.to_string(), 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -252,4 +252,3 @@ where
 
     Ok((c, true))
 }
-

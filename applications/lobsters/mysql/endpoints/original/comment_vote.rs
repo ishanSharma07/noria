@@ -38,9 +38,9 @@ where
      AND `votes`.`story_id` = ? \
      AND `votes`.`comment_id` = ?";
     log_query = select_votes
-    .replace("?", &user.to_string())
-    .replace("?", &sid.to_string())
-    .replace("?", &comment.to_string());
+    .replacen("?", &user.to_string(), 1)
+    .replacen("?", &sid.to_string(), 1)
+    .replacen("?", &comment.to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -59,13 +59,13 @@ where
      VALUES \
      (?, ?, ?, ?)";
     log_query = insert_votes
-     .replace("?", &user.to_string())
-     .replace("?", &sid.to_string())
-     .replace("?", &comment.to_string())
-     .replace("?", match v {
+     .replacen("?", &user.to_string(), 1)
+     .replacen("?", &sid.to_string(), 1)
+     .replacen("?", &comment.to_string(), 1)
+     .replacen("?", match v {
          Vote::Up => "1",
          Vote::Down => "0",
-     });
+     }, 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -118,8 +118,8 @@ where
         },
     );
     log_query = update_comments
-     .replace("?", &confidence.to_string())
-     .replace("?", &comment.to_string());
+     .replacen("?", &confidence.to_string(), 1)
+     .replacen("?", &comment.to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -232,4 +232,3 @@ where
 
     Ok((c, false))
 }
-

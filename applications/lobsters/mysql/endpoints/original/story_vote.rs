@@ -40,8 +40,8 @@ where
      AND `votes`.`story_id` = ? \
      AND `votes`.`comment_id` IS NULL";
     log_query = select_votes
-    .replace("?", &user.to_string())
-    .replace("?", &story.to_string());
+    .replacen("?", &user.to_string(), 1)
+    .replacen("?", &story.to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -59,12 +59,12 @@ where
      (`user_id`, `story_id`, `vote`) \
      VALUES (?, ?, ?)";
     log_query = insert_votes
-    .replace("?", &user.to_string())
-    .replace("?", &story.to_string())
-    .replace("?", match v {
+    .replacen("?", &user.to_string(), 1)
+    .replacen("?", &story.to_string(), 1)
+    .replacen("?", match v {
         Vote::Up => "1",
         Vote::Down => "0",
-    });
+    }, 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -162,12 +162,12 @@ where
         },
     );
     log_query = update_stories
-     .replace("?", &(score
+     .replacen("?", &(score
          - match v {
              Vote::Up => 1.0,
              Vote::Down => -1.0,
-         }).to_string())
-     .replace("?", &story.to_string());
+         }).to_string(), 1)
+     .replacen("?", &story.to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -185,4 +185,3 @@ where
 
     Ok((c, false))
 }
-

@@ -68,14 +68,14 @@ where
      `markeddown_description`) \
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     let log_query = insert_stories
-    .replace("?", &(chrono::Local::now().naive_local()).to_string())
-    .replace("?", &user.to_string())
-    .replace("?", &title)
-    .replace("?", "to infinity")
-    .replace("?", ::std::str::from_utf8(&id[..]).unwrap())
-    .replace("?", "1")
-    .replace("?", "-19216.2884921")
-    .replace("?", "<p>to infinity</p>\n");
+    .replacen("?", &(chrono::Local::now().naive_local()).to_string(), 1)
+    .replacen("?", &user.to_string(), 1)
+    .replacen("?", &title, 1)
+    .replacen("?", "to infinity", 1)
+    .replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1)
+    .replacen("?", "1", 1)
+    .replacen("?", "-19216.2884921", 1)
+    .replacen("?", "<p>to infinity</p>\n", 1);
     println!("{}", log_query);
     let q = c
         .prep_exec(
@@ -98,8 +98,8 @@ where
     let insert_taggings = "INSERT INTO `taggings` (`story_id`, `tag_id`) \
      VALUES (?, ?)";
     let mut log_query = insert_taggings
-    .replace("?", &story.to_string())
-    .replace("?", &tag.unwrap().to_string());
+    .replacen("?", &story.to_string(), 1)
+    .replacen("?", &tag.unwrap().to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -113,8 +113,8 @@ where
      VALUES (?, ?) \
      ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
     log_query = insert_keystore
-    .replace("?", &key)
-    .replace("?", "1");
+    .replacen("?", &key, 1)
+    .replacen("?", "1", 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -142,8 +142,8 @@ where
          AND `votes`.`story_id` = ? \
          AND `votes`.`comment_id` IS NULL";
         log_query = select_votes
-        .replace("?", &user.to_string())
-        .replace("?", &story.to_string());
+        .replacen("?", &user.to_string(), 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -157,9 +157,9 @@ where
      (`user_id`, `story_id`, `vote`) \
      VALUES (?, ?, ?)";
     log_query = insert_votes
-    .replace("?", &user.to_string())
-    .replace("?", &story.to_string())
-    .replace("?", "1");
+    .replacen("?", &user.to_string(), 1)
+    .replacen("?", &story.to_string(), 1)
+    .replacen("?", "1", 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -190,8 +190,8 @@ where
          SET `hotness` = ? \
          WHERE `stories`.`id` = ?";
         log_query = update_hotness
-        .replace("?", "-19216.5479744")
-        .replace("?", &story.to_string());
+        .replacen("?", "-19216.5479744", 1)
+        .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -203,4 +203,3 @@ where
 
     Ok((c, false))
 }
-
