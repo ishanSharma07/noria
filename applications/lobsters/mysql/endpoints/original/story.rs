@@ -66,8 +66,8 @@ where
                      (`created_at`, `updated_at`, `user_id`, `story_id`) \
                      VALUES (?, ?, ?, ?)";
                 log_query = insert_ribbon
-                .replacen("?", &now.to_string(), 1)
-                .replacen("?", &now.to_string(), 1)
+                .replacen("?", &format!("'{}'", &now.to_string()), 1)
+                .replacen("?", &format!("'{}'", &now.to_string()), 1)
                 .replacen("?", &uid.to_string(), 1)
                 .replacen("?", &story.to_string(), 1);
                 println!("{}", log_query);
@@ -82,7 +82,7 @@ where
                      SET `read_ribbons`.`updated_at` = ? \
                      WHERE `read_ribbons`.`id` = ?";
                 log_query = update_ribbon
-                .replacen("?", &now.to_string(), 1)
+                .replacen("?", &format!("'{}'", &now.to_string()), 1)
                 .replacen("?", &(rr.get::<u32, _>("id").unwrap()).to_string(), 1);
                 println!("{}", log_query);
                 x.drop_exec(

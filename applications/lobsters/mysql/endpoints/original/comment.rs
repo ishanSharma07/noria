@@ -107,8 +107,8 @@ where
          `comment`, `upvotes`, `confidence`, \
          `markeddown_comment`) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        log_query = insert_comments.replacen("?", &now.to_string(), 1);
-        log_query = log_query.replacen("?", &now.to_string(), 1);
+        log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
+        log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
         log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
         log_query = log_query.replacen("?", &story.to_string(), 1);
         log_query = log_query.replacen("?", &user.to_string(), 1);
@@ -118,10 +118,10 @@ where
         } else{
             log_query = log_query.replacen("?", "NULL", 1);
         }
-        log_query = log_query.replacen("?", "moar benchmarking", 1);
+        log_query = log_query.replacen("?", "'moar benchmarking'", 1);
         log_query = log_query.replacen("?", "1", 1);
-        log_query = log_query.replacen("?", "0.1828847834138887", 1);
-        log_query = log_query.replacen("?", "<p>moar benchmarking</p>", 1);
+        log_query = log_query.replacen("?", "'0.1828847834138887'", 1);
+        log_query = log_query.replacen("?", "'<p>moar benchmarking</p>'", 1);
         println!("{}", log_query);
         c.prep_exec(
             insert_comments,
@@ -146,15 +146,15 @@ where
          `user_id`, `comment`, `upvotes`, `confidence`, \
          `markeddown_comment`) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-         log_query = insert_comments.replacen("?", &now.to_string(), 1);
-         log_query = log_query.replacen("?", &now.to_string(), 1);
+         log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
+         log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
          log_query = log_query.replacen("?", &story.to_string(), 1);
          log_query = log_query.replacen("?", &user.to_string(), 1);
-         log_query = log_query.replacen("?", "moar benchmarking", 1);
+         log_query = log_query.replacen("?", "'moar benchmarking'", 1);
          log_query = log_query.replacen("?", "1", 1);
          log_query = log_query.replacen("?", "0.1828847834138887", 1);
-         log_query = log_query.replacen("?", "<p>moar benchmarking</p>\n", 1);
+         log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\n'", 1);
         println!("{}", log_query);
         c.prep_exec(
             insert_comments,

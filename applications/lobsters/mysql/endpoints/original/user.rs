@@ -14,7 +14,7 @@ where
     let c = c.await?;
     let select_users = "SELECT  `users`.* FROM `users` \
      WHERE `users`.`username` = ?";
-    let mut log_query = select_users.replace("?", &format!("user{}", uid));
+    let mut log_query = select_users.replace("?", &format!("'user{}'", uid));
     println!("{}", log_query);
     let (mut c, user) = c
         .first_exec::<_, _, my::Row>(
@@ -44,7 +44,7 @@ where
     let select_keystore = "SELECT  `keystores`.* \
      FROM `keystores` \
      WHERE `keystores`.`key` = ?";
-    log_query = select_keystore.replace("?", &format!("user:{}:stories_submitted", uid));
+    log_query = select_keystore.replace("?", &format!("'user:{}:stories_submitted'", uid));
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -53,7 +53,7 @@ where
         )
         .await?;
 
-    log_query = select_keystore.replace("?", &format!("user:{}:comments_posted", uid));
+    log_query = select_keystore.replace("?", &format!("'user:{}:comments_posted'", uid));
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -76,4 +76,3 @@ where
 
     Ok((c, true))
 }
-

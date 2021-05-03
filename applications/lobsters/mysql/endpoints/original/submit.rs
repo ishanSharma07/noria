@@ -68,14 +68,14 @@ where
      `markeddown_description`) \
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     let log_query = insert_stories
-    .replacen("?", &(chrono::Local::now().naive_local()).to_string(), 1)
+    .replacen("?", &format!("'{}'", &(chrono::Local::now().naive_local()).to_string()), 1)
     .replacen("?", &user.to_string(), 1)
-    .replacen("?", &title, 1)
-    .replacen("?", "to infinity", 1)
+    .replacen("?", &format!("'{}'", &title), 1)
+    .replacen("?", "'to infinity'", 1)
     .replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1)
     .replacen("?", "1", 1)
     .replacen("?", "-19216.2884921", 1)
-    .replacen("?", "<p>to infinity</p>\n", 1);
+    .replacen("?", "'<p>to infinity</p>\n'", 1);
     println!("{}", log_query);
     let q = c
         .prep_exec(
