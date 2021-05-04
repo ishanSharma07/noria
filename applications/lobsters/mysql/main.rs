@@ -12,7 +12,7 @@ use std::time;
 use tower_service::Service;
 use trawler::{LobstersRequest, TrawlerRequest};
 
-const ORIGINAL_SCHEMA: &'static str = include_str!("db-schema/original.sql");
+const ORIGINAL_SCHEMA: &'static str = include_str!("db-schema/original_rocksdb.sql");
 const NORIA_SCHEMA: &'static str = include_str!("db-schema/noria.sql");
 const NATURAL_SCHEMA: &'static str = include_str!("db-schema/natural.sql");
 
@@ -208,7 +208,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Login => {
                         let c = c.await?;
-                        let select_query = "SELECT 1 as one FROM `users` WHERE `users`.`username` = ?";
+                        let select_query = "SELECT 1 as one FROM `users` WHERE `users`.`PII_username` = ?";
                         let log_select = select_query.replace("?", &acting_as.unwrap().to_string());
                         println!("{}", log_select);
                         let (mut c, user) = c
@@ -220,7 +220,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
 
                         if user.is_none() {
                             let uid = acting_as.unwrap();
-                            let insert_query = "INSERT INTO `users` (`username`) VALUES (?)";
+                            let insert_query = "INSERT INTO `users` (`PII_username`) VALUES (?)";
                             let log_insert = insert_query.replace("?", &uid.to_string());
                             println!("{}", log_insert);
                             c = c
@@ -254,7 +254,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                 }
             }};
-        };
+        }
 
         let variant = self.variant;
         Box::pin(async move {

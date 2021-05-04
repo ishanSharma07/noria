@@ -13,7 +13,7 @@ where
 {
     let c = c.await?;
     let select_users = "SELECT  `users`.* FROM `users` \
-     WHERE `users`.`username` = ?";
+     WHERE `users`.`PII_username` = ?";
     let mut log_query = select_users.replace("?", &format!("'user{}'", uid));
     println!("{}", log_query);
     let (mut c, user) = c
@@ -63,13 +63,13 @@ where
         .await?;
 
     let select_hats = "SELECT  1 AS one FROM `hats` \
-     WHERE `hats`.`user_id` = ? LIMIT 1";
+     WHERE `hats`.`OWNER_user_id` = ? LIMIT 1";
     log_query = select_hats.replace("?", &uid.to_string());
     println!("{}", log_query);
     c = c
         .drop_exec(
             "SELECT  1 AS one FROM `hats` \
-             WHERE `hats`.`user_id` = ? LIMIT 1",
+             WHERE `hats`.`OWNER_user_id` = ? LIMIT 1",
             (uid,),
         )
         .await?;
