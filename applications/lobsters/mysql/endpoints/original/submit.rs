@@ -65,8 +65,9 @@ where
     let insert_stories = "INSERT INTO `stories` \
      (`created_at`, `user_id`, `title`, \
      `description`, `short_id`, `upvotes`, `hotness`, \
-     `markeddown_description`) \
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+     `markeddown_description`,\
+     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0)";
     let log_query = insert_stories
     .replacen("?", &format!("'{}'", &(chrono::Local::now().naive_local()).to_string()), 1)
     .replacen("?", &user.to_string(), 1)

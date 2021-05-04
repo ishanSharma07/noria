@@ -144,8 +144,9 @@ where
         let insert_comments = "INSERT INTO `comments` \
          (`created_at`, `updated_at`, `short_id`, `story_id`, \
          `user_id`, `comment`, `upvotes`, `confidence`, \
-         `markeddown_comment`) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+         `markeddown_comment`, `downvotes`, `is_deleted`, `is_moderated`, \
+         `is_from_email`) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)";
          log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);

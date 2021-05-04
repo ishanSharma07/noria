@@ -63,8 +63,8 @@ where
         c = match rr {
             None => {
                 let insert_ribbon = "INSERT INTO `read_ribbons` \
-                     (`created_at`, `updated_at`, `user_id`, `story_id`) \
-                     VALUES (?, ?, ?, ?)";
+                     (`created_at`, `updated_at`, `user_id`, `story_id`, `is_following`) \
+                     VALUES (?, ?, ?, ?, 1)";
                 log_query = insert_ribbon
                 .replacen("?", &format!("'{}'", &now.to_string()), 1)
                 .replacen("?", &format!("'{}'", &now.to_string()), 1)
