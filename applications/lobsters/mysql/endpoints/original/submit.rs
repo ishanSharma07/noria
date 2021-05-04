@@ -108,7 +108,7 @@ where
         )
         .await?;
 
-    let key = format!("user:{}:stories_submitted", user);
+    let key = format!("'user:{}:stories_submitted'", user);
     let insert_keystore = "INSERT INTO keystores (`key`, `value`) \
      VALUES (?, ?) \
      ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
