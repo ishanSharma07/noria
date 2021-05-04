@@ -18,7 +18,7 @@ where
     let select_stories = "SELECT `stories`.* \
      FROM `stories` \
      WHERE `stories`.`short_id` = ?";
-    let mut log_query = select_stories.replace("?",::std::str::from_utf8(&id[..]).unwrap());
+    let mut log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
     println!("{}", log_query);
     let (mut c, mut story) = c
         .prep_exec(

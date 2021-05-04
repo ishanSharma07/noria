@@ -32,7 +32,7 @@ where
         // check that story id isn't already assigned
         let select_stories = "SELECT  1 AS one FROM `stories` \
          WHERE `stories`.`short_id` = ?";
-        let log_query = select_stories.replace("?",::std::str::from_utf8(&id[..]).unwrap());
+        let log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
         c = c
             .drop_exec(
@@ -72,7 +72,7 @@ where
     .replacen("?", &user.to_string(), 1)
     .replacen("?", &format!("'{}'", &title), 1)
     .replacen("?", "'to infinity'", 1)
-    .replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1)
+    .replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1)
     .replacen("?", "1", 1)
     .replacen("?", "-19216.2884921", 1)
     .replacen("?", "'<p>to infinity</p>\\n'", 1);

@@ -20,7 +20,7 @@ where
     let select_stories = "SELECT `stories`.* \
      FROM `stories` \
      WHERE `stories`.`short_id` = ?";
-    let mut log_query = select_stories.replace("?",::std::str::from_utf8(&story[..]).unwrap());
+    let mut log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&story[..]).unwrap()));
     println!("{}", log_query);
     let (mut c, story) = c
         .first_exec::<_, _, my::Row>(
@@ -51,7 +51,7 @@ where
          WHERE `comments`.`story_id` = ? \
          AND `comments`.`short_id` = ?";
         log_query = select_comments.replacen("?", &story.to_string(), 1);
-        log_query = log_query.replacen("?", ::std::str::from_utf8(&parent[..]).unwrap(), 1);
+        log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&parent[..]).unwrap()), 1);
         println!("{}", log_query);
         let (x, p) = c
             .first_exec::<_, _, my::Row>(
@@ -84,7 +84,7 @@ where
     if !priming {
         let select_one = "SELECT  1 AS one FROM `comments` \
          WHERE `comments`.`short_id` = ?";
-        log_query = select_one.replace("?", ::std::str::from_utf8(&id[..]).unwrap());
+        log_query = select_one.replace("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
         // check that short id is available
         c = c
@@ -109,7 +109,7 @@ where
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
         log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
-        log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
+        log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
         log_query = log_query.replacen("?", &story.to_string(), 1);
         log_query = log_query.replacen("?", &user.to_string(), 1);
         log_query = log_query.replacen("?", &parent.to_string(), 1);
@@ -148,7 +148,7 @@ where
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
          log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
-         log_query = log_query.replacen("?", ::std::str::from_utf8(&id[..]).unwrap(), 1);
+         log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
          log_query = log_query.replacen("?", &story.to_string(), 1);
          log_query = log_query.replacen("?", &user.to_string(), 1);
          log_query = log_query.replacen("?", "'moar benchmarking'", 1);
