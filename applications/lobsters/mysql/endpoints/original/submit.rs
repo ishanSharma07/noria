@@ -66,8 +66,9 @@ where
      (`created_at`, `user_id`, `title`, \
      `description`, `short_id`, `upvotes`, `hotness`, \
      `markeddown_description`,\
-     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`) \
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0)";
+     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`,\
+     `story_cache`, `merged_story_id`, `unavailable_at`, `twitter_id`, `user_is_author`) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)";
     let log_query = insert_stories
     .replacen("?", &format!("'{}'", &(chrono::Local::now().naive_local()).to_string()), 1)
     .replacen("?", &user.to_string(), 1)
@@ -155,8 +156,8 @@ where
     }
 
     let insert_votes = "INSERT INTO `votes` \
-     (`user_id`, `story_id`, `vote`) \
-     VALUES (?, ?, ?)";
+     (`user_id`, `story_id`, `vote`, `comment_id`, `reason`) \
+     VALUES (?, ?, ?, NULL, NULL)";
     log_query = insert_votes
     .replacen("?", &user.to_string(), 1)
     .replacen("?", &story.to_string(), 1)

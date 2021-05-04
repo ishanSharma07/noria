@@ -105,8 +105,9 @@ where
          (`created_at`, `updated_at`, `short_id`, `story_id`, \
          `user_id`, `parent_comment_id`, `thread_id`, \
          `comment`, `upvotes`, `confidence`, \
-         `markeddown_comment`) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+         `markeddown_comment`,\
+         `downvotes`, `is_deleted`, `is_moderated`, `is_from_email`, `hat_id`) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)";
         log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
         log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
         log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
@@ -145,8 +146,8 @@ where
          (`created_at`, `updated_at`, `short_id`, `story_id`, \
          `user_id`, `comment`, `upvotes`, `confidence`, \
          `markeddown_comment`, `downvotes`, `is_deleted`, `is_moderated`, \
-         `is_from_email`) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)";
+         `is_from_email`, `hat_id`, `parent_comment_id`, `thread_id`) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, NULL)";
          log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
          log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
@@ -195,8 +196,8 @@ where
     }
 
     let insert_votes = "INSERT INTO `votes` \
-     (`user_id`, `story_id`, `comment_id`, `vote`) \
-     VALUES (?, ?, ?, ?)";
+     (`user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+     VALUES (?, ?, ?, ?, NULL)";
     log_query = insert_votes.replacen("?", &user.to_string(), 1);
     log_query = log_query.replacen("?", &story.to_string(), 1);
     log_query = log_query.replacen("?", &comment.to_string(), 1);

@@ -54,8 +54,8 @@ where
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
     let insert_votes = "INSERT INTO `votes` \
-     (`user_id`, `story_id`, `vote`) \
-     VALUES (?, ?, ?)";
+     (`user_id`, `story_id`, `vote`, `comment_id`, `reason`) \
+     VALUES (?, ?, ?, NULL, NULL)";
     log_query = insert_votes
     .replacen("?", &user.to_string(), 1)
     .replacen("?", &story.to_string(), 1)
