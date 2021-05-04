@@ -100,7 +100,7 @@ where
         .await?;
 
     // approximate Comment::calculate_hotness
-    let confidence = upvotes as f64 / (upvotes as f64 + downvotes as f64);
+    let confidence = (upvotes as f64 / (upvotes as f64 + downvotes as f64)).ceil();
     let update_comments = &format!(
         "UPDATE `comments` \
          SET \
@@ -142,7 +142,7 @@ where
         )
         .await?;
     let story = story.unwrap();
-    let score = story.get::<f64, _>("hotness").unwrap();
+    let score = story.get::<i64, _>("hotness").unwrap();
 
     let select_tags = "SELECT `tags`.* \
      FROM `tags` \
@@ -211,8 +211,8 @@ where
     log_query = udpate_stories
        .replace("?", &(score
            - match v {
-               Vote::Up => 1.0,
-               Vote::Down => -1.0,
+               Vote::Up => 1,
+               Vote::Down => -1,
            }).to_string())
        .replace("?", &sid.to_string());
     println!("{}", log_query);
@@ -222,8 +222,8 @@ where
             (
                 score
                     - match v {
-                        Vote::Up => 1.0,
-                        Vote::Down => -1.0,
+                        Vote::Up => 1,
+                        Vote::Down => -1,
                     },
                 sid,
             ),

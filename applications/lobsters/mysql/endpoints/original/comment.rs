@@ -30,7 +30,7 @@ where
         .await?;
     let story = story.unwrap();
     let author = story.get::<u32, _>("user_id").unwrap();
-    let hotness = story.get::<f64, _>("hotness").unwrap();
+    let hotness = story.get::<i64, _>("hotness").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
 
     if !priming {
@@ -120,7 +120,7 @@ where
         }
         log_query = log_query.replacen("?", "'moar benchmarking'", 1);
         log_query = log_query.replacen("?", "1", 1);
-        log_query = log_query.replacen("?", "'0.1828847834138887'", 1);
+        log_query = log_query.replacen("?", "'1'", 1);
         log_query = log_query.replacen("?", "'<p>moar benchmarking</p>'", 1);
         println!("{}", log_query);
         c.prep_exec(
@@ -135,7 +135,7 @@ where
                 thread,
                 "moar benchmarking", // lorem ipsum?
                 1,
-                0.1828847834138887,
+                1,
                 "<p>moar benchmarking</p>\n",
             ),
         )
@@ -153,7 +153,7 @@ where
          log_query = log_query.replacen("?", &user.to_string(), 1);
          log_query = log_query.replacen("?", "'moar benchmarking'", 1);
          log_query = log_query.replacen("?", "1", 1);
-         log_query = log_query.replacen("?", "0.1828847834138887", 1);
+         log_query = log_query.replacen("?", "1", 1);
          log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\\n'", 1);
         println!("{}", log_query);
         c.prep_exec(
@@ -166,7 +166,7 @@ where
                 user,
                 "moar benchmarking", // lorem ipsum?
                 1,
-                0.1828847834138887,
+                1,
                 "<p>moar benchmarking</p>\n",
             ),
         )
@@ -298,13 +298,13 @@ where
     let update_stories = "UPDATE `stories` \
      SET `hotness` = ? \
      WHERE `stories`.`id` = ?";
-    log_query = update_stories.replacen("?", &(hotness - 1.0).to_string(), 1);
+    log_query = update_stories.replacen("?", &(hotness - 1).to_string(), 1);
     log_query = log_query.replacen("?", &story.to_string(), 1);
     println!("{}", log_query);
     c = c
         .drop_exec(
             update_stories,
-            (hotness - 1.0, story),
+            (hotness - 1, story),
         )
         .await?;
 

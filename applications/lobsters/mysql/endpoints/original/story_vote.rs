@@ -30,7 +30,7 @@ where
     let story = story.swap_remove(0);
 
     let author = story.get::<u32, _>("user_id").unwrap();
-    let score = story.get::<f64, _>("hotness").unwrap();
+    let score = story.get::<i64, _>("hotness").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
     let select_votes ="SELECT `votes`.* \
      FROM `votes` \
@@ -162,8 +162,8 @@ where
     log_query = update_stories
      .replacen("?", &(score
          - match v {
-             Vote::Up => 1.0,
-             Vote::Down => -1.0,
+             Vote::Up => 1,
+             Vote::Down => -1,
          }).to_string(), 1)
      .replacen("?", &story.to_string(), 1);
     println!("{}", log_query);
@@ -173,8 +173,8 @@ where
             (
                 score
                     - match v {
-                        Vote::Up => 1.0,
-                        Vote::Down => -1.0,
+                        Vote::Up => 1,
+                        Vote::Down => -1,
                     },
                 story,
             ),

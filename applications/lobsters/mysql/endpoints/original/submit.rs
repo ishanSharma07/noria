@@ -74,7 +74,7 @@ where
     .replacen("?", "'to infinity'", 1)
     .replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1)
     .replacen("?", "1", 1)
-    .replacen("?", "-19216.2884921", 1)
+    .replacen("?", "-19217", 1)
     .replacen("?", "'<p>to infinity</p>\\n'", 1);
     println!("{}", log_query);
     let q = c
@@ -87,7 +87,7 @@ where
                 "to infinity", // lorem ipsum?
                 ::std::str::from_utf8(&id[..]).unwrap(),
                 1,
-                -19216.2884921,
+                -19217,
                 "<p>to infinity</p>\n",
             ),
         )
@@ -190,13 +190,13 @@ where
          SET `hotness` = ? \
          WHERE `stories`.`id` = ?";
         log_query = update_hotness
-        .replacen("?", "-19216.5479744", 1)
+        .replacen("?", "-19217", 1)
         .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
                 update_hotness,
-                (-19216.5479744, story),
+                (-19217, story),
             )
             .await?;
     }
