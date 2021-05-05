@@ -18,7 +18,7 @@ where
     let user = acting_as.unwrap();
 
     // check that tags are active
-    let select_tags = "SELECT  tags.* FROM tags \
+    let select_tags = "SELECT tags.* FROM tags \
      WHERE tags.inactive = 0 AND tags.tag IN ('test')";
     println!("{}", select_tags);
     let (mut c, tag) = c
