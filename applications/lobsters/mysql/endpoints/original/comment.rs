@@ -108,23 +108,7 @@ where
          `markeddown_comment`,\
          `downvotes`, `is_deleted`, `is_moderated`, `is_from_email`, `hat_id`) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)";
-        log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
-        log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
-        log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
-        log_query = log_query.replacen("?", &story.to_string(), 1);
-        log_query = log_query.replacen("?", &user.to_string(), 1);
-        log_query = log_query.replacen("?", &parent.to_string(), 1);
-        if let Some(t) = thread{
-            log_query = log_query.replacen("?", &t.to_string(), 1);
-        } else{
-            log_query = log_query.replacen("?", "NULL", 1);
-        }
-        log_query = log_query.replacen("?", "'moar benchmarking'", 1);
-        log_query = log_query.replacen("?", "1", 1);
-        log_query = log_query.replacen("?", "'1'", 1);
-        log_query = log_query.replacen("?", "'<p>moar benchmarking</p>'", 1);
-        println!("{}", log_query);
-        c.prep_exec(
+        let r = c.prep_exec(
             insert_comments,
             (
                 now,
@@ -140,7 +124,19 @@ where
                 "<p>moar benchmarking</p>\n",
             ),
         )
-        .await?
+        .await?;
+        let comment_id = r.last_insert_id().unwrap();
+        log_query = format!("INSERT INTO `comments` \
+         (`id`, `created_at`, `updated_at`, `short_id`, `story_id`, \
+         `user_id`, `parent_comment_id`, `thread_id`, \
+         `comment`, `upvotes`, `confidence`, \
+         `markeddown_comment`,\
+         `downvotes`, `is_deleted`, `is_moderated`, `is_from_email`, `hat_id`) \
+         VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, '{}', {}, '{}', '{}', 0, 0, 0, 0, NULL)",
+         comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user, parent,
+         thread.map(|x| x.to_string()).unwrap_or("NULL".to_string()), "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
+        println!("{}", log_query);
+        r
     } else {
         let insert_comments = "INSERT INTO `comments` \
          (`created_at`, `updated_at`, `short_id`, `story_id`, \
@@ -158,7 +154,7 @@ where
          log_query = log_query.replacen("?", "1", 1);
          log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\\n'", 1);
         println!("{}", log_query);
-        c.prep_exec(
+        let r = c.prep_exec(
             insert_comments,
             (
                 now,
@@ -172,7 +168,20 @@ where
                 "<p>moar benchmarking</p>\n",
             ),
         )
-        .await?
+        .await?;
+        let comment_id = r.last_insert_id().unwrap();
+        log_query = format!("INSERT INTO `comments` \
+         (`id`, `created_at`, `updated_at`, `short_id`, `story_id`, \
+         `user_id`, `parent_comment_id`, `thread_id`, \
+         `comment`, `upvotes`, `confidence`, \
+         `markeddown_comment`,\
+         `downvotes`, `is_deleted`, `is_moderated`, `is_from_email`, `hat_id`) \
+         VALUES ({}, '{}', '{}', '{}', {}, {}, NULL, NULL, '{}', {}, '{}', '{}', 0, 0, 0, 0, NULL)",
+         comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user,
+         "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
+        println!("{}", log_query);
+        r
+
     };
     let comment = q.last_insert_id().unwrap();
     let mut c = q.drop_result().await?;
@@ -198,17 +207,19 @@ where
     let insert_votes = "INSERT INTO `votes` \
      (`user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
      VALUES (?, ?, ?, ?, NULL)";
-    log_query = insert_votes.replacen("?", &user.to_string(), 1);
-    log_query = log_query.replacen("?", &story.to_string(), 1);
-    log_query = log_query.replacen("?", &comment.to_string(), 1);
-    log_query = log_query.replacen("?", "1", 1);
-    println!("{}", log_query);
     c = c
         .drop_exec(
             insert_votes,
             (user, story, comment, 1),
         )
         .await?;
+    let vote_insert_id = c.last_insert_id().unwrap();
+    log_query = format!("INSERT INTO `votes` \
+     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+     VALUES \
+     ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, story,
+     comment, 1);
+    println!("{}", log_query);
 
     let select_storiesv2 = "SELECT `stories`.`id` \
      FROM `stories` \
@@ -311,9 +322,9 @@ where
         .await?;
 
     let key = format!("'user:{}:comments_posted'", user);
-    let insert_keystore = "INSERT INTO keystores (`key`, `value`) \
+    let insert_keystore = "INSERT INTO keystores (`keyX`, `valueX`) \
      VALUES (?, ?) \
-     ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
+     ON DUPLICATE KEY UPDATE `keystores`.`valueX` = `keystores`.`valueX` + 1";
     log_query = insert_keystore.replacen("?", &key, 1);
     log_query = log_query.replacen("?", "1", 1);
     println!("{}", log_query);
