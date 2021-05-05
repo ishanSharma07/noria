@@ -15,9 +15,9 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
     c = c
         .drop_exec(
             "SELECT COUNT(*) \
-                     FROM `replying_comments_for_count`
-                     WHERE `replying_comments_for_count`.`user_id` = ? \
-                     GROUP BY `replying_comments_for_count`.`user_id` \
+                     FROM replying_comments_for_count
+                     WHERE replying_comments_for_count.user_id = ? \
+                     GROUP BY replying_comments_for_count.user_id \
                      ",
             (uid,),
         )
@@ -25,9 +25,9 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
 
     c = c
         .drop_exec(
-            "SELECT `keystores`.* \
-             FROM `keystores` \
-             WHERE `keystores`.`key` = ?",
+            "SELECT keystores.* \
+             FROM keystores \
+             WHERE keystores.keyX = ?",
             (format!("user:{}:unread_messages", uid),),
         )
         .await?;

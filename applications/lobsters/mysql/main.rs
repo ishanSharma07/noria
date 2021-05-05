@@ -208,7 +208,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Login => {
                         let c = c.await?;
-                        let select_query = "SELECT 1 as one FROM `users` WHERE `users`.`PII_username` = '?'";
+                        let select_query = "SELECT 1 as one FROM users WHERE users.PII_username = '?'";
                         let log_select = select_query.replace("?", &acting_as.unwrap().to_string());
                         println!("{}", log_select);
                         let (mut c, user) = c
@@ -220,13 +220,13 @@ impl Service<TrawlerRequest> for MysqlTrawler {
 
                         if user.is_none() {
                             let uid = acting_as.unwrap();
-                            let insert_query = "INSERT INTO `users` \
-                            (`id`, `PII_username`, `email`, `password_digest`, `created_at`, `is_admin`, \
-                            `password_reset_token`, `session_token`, `about`, `invited_by_user_id`,\
-                            `is_moderator`, `pushover_mentions`, `rss_token`, `mailing_list_token`,\
-                            `mailing_list_mode`, `karma`, `banned_at`, `banned_by_user_id`, \
-                            `banned_reason`, `deleted_at`, `disabled_invite_at`, \
-                            `disabled_invite_by_user_id`, `disabled_invite_reason`, `settings`) \
+                            let insert_query = "INSERT INTO users \
+                            (id, PII_username, email, password_digest, created_at, is_admin, \
+                            password_reset_token, session_token, about, invited_by_user_id,\
+                            is_moderator, pushover_mentions, rss_token, mailing_list_token,\
+                            mailing_list_mode, karma, banned_at, banned_by_user_id, \
+                            banned_reason, deleted_at, disabled_invite_at, \
+                            disabled_invite_by_user_id, disabled_invite_reason, settings) \
                             VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
                                 NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)";
                             let log_insert = insert_query

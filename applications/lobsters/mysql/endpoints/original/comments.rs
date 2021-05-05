@@ -13,10 +13,10 @@ where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
     let c = c.await?;
-    let select_comments = "SELECT  `comments`.* \
-     FROM `comments` \
-     WHERE `comments`.`is_deleted` = 0 \
-     AND `comments`.`is_moderated` = 0 \
+    let select_comments = "SELECT  comments.* \
+     FROM comments \
+     WHERE comments.is_deleted = 0 \
+     AND comments.is_moderated = 0 \
      ORDER BY id DESC \
      LIMIT 40 OFFSET 0";
     println!("{}", select_comments);
@@ -62,8 +62,8 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_users = &format!(
-        "SELECT `users`.* FROM `users` \
-         WHERE `users`.`id` IN ({})",
+        "SELECT users.* FROM users \
+         WHERE users.id IN ({})",
         users
     );
     println!("{}", select_users);
@@ -78,8 +78,8 @@ where
         .join(",");
 
     let select_stories = &format!(
-        "SELECT  `stories`.* FROM `stories` \
-         WHERE `stories`.`id` IN ({})",
+        "SELECT  stories.* FROM stories \
+         WHERE stories.id IN ({})",
         stories
     );
     println!("{}", select_stories);
@@ -100,9 +100,9 @@ where
             .chain(comments.iter().map(|c| c as &UserId))
             .collect();
         let select_votes = &format!(
-            "SELECT `votes`.* FROM `votes` \
-             WHERE `votes`.`user_id` = ? \
-             AND `votes`.`comment_id` IN ({})",
+            "SELECT votes.* FROM votes \
+             WHERE votes.user_id = ? \
+             AND votes.comment_id IN ({})",
             params
         );
         let mut comments_str = String::from("");
@@ -129,8 +129,8 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_usersv2 = &format!(
-            "SELECT  `users`.* FROM `users` \
-             WHERE `users`.`id` IN ({})",
+            "SELECT  users.* FROM users \
+             WHERE users.id IN ({})",
             authors
         );
     println!("{}", select_usersv2);

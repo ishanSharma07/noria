@@ -13,9 +13,9 @@ where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
     let c = c.await?;
-    let select_stories = "SELECT  `stories`.* FROM `stories` \
-     WHERE `stories`.`merged_story_id` IS NULL \
-     AND `stories`.`is_expired` = 0 \
+    let select_stories = "SELECT  stories.* FROM stories \
+     WHERE stories.merged_story_id IS NULL \
+     AND stories.is_expired = 0 \
      AND ((CAST(upvotes AS signed) - CAST(downvotes AS signed)) >= 0) \
      ORDER BY hotness LIMIT 51 OFFSET 0";
     let log_query = select_stories;
@@ -45,9 +45,9 @@ where
         .join(",");
 
     if let Some(uid) = acting_as {
-        let select_hidden = "SELECT `hidden_stories`.`story_id` \
-         FROM `hidden_stories` \
-         WHERE `hidden_stories`.`user_id` = ?";
+        let select_hidden = "SELECT hidden_stories.story_id \
+         FROM hidden_stories \
+         WHERE hidden_stories.user_id = ?";
          let log_query = select_hidden.replace("?", &uid.to_string());
          println!("{}", log_query);
         let x = c
@@ -57,8 +57,8 @@ where
             )
             .await?;
 
-        let select_tags = "SELECT `tag_filters`.* FROM `tag_filters` \
-         WHERE `tag_filters`.`user_id` = ?";
+        let select_tags = "SELECT tag_filters.* FROM tag_filters \
+         WHERE tag_filters.user_id = ?";
          let log_query = select_tags.replace("?", &uid.to_string());
          println!("{}", log_query);
         let tags = x
@@ -82,10 +82,10 @@ where
                 .collect::<Vec<_>>()
                 .join(",");
             let select_taggings = &format!(
-                "SELECT `taggings`.`story_id` \
-                 FROM `taggings` \
-                 WHERE `taggings`.`story_id` IN ({}) \
-                 AND `taggings`.`tag_id` IN ({})",
+                "SELECT taggings.story_id \
+                 FROM taggings \
+                 WHERE taggings.story_id IN ({}) \
+                 AND taggings.tag_id IN ({})",
                 stories_in, tags
             );
             println!("{}", select_taggings);
@@ -101,7 +101,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_usersv2 = &format!(
-        "SELECT `users`.* FROM `users` WHERE `users`.`id` IN ({})",
+        "SELECT users.* FROM users WHERE users.id IN ({})",
         users,
     );
     println!("{}", select_usersv2);
@@ -110,9 +110,9 @@ where
         .await?;
 
     let select_sugg_titles = &format!(
-        "SELECT `suggested_titles`.* \
-         FROM `suggested_titles` \
-         WHERE `suggested_titles`.`story_id` IN ({})",
+        "SELECT suggested_titles.* \
+         FROM suggested_titles \
+         WHERE suggested_titles.story_id IN ({})",
         stories_in
     );
     println!("{}", select_sugg_titles);
@@ -121,9 +121,9 @@ where
         .await?;
 
     let select_sugg_taggings = &format!(
-        "SELECT `suggested_taggings`.* \
-         FROM `suggested_taggings` \
-         WHERE `suggested_taggings`.`story_id` IN ({})",
+        "SELECT suggested_taggings.* \
+         FROM suggested_taggings \
+         WHERE suggested_taggings.story_id IN ({})",
         stories_in
     );
     println!("{}", select_sugg_taggings);
@@ -132,8 +132,8 @@ where
         .await?;
 
     let select_taggingsv2 = &format!(
-        "SELECT `taggings`.* FROM `taggings` \
-         WHERE `taggings`.`story_id` IN ({})",
+        "SELECT taggings.* FROM taggings \
+         WHERE taggings.story_id IN ({})",
         stories_in
     );
     println!("{}", select_taggingsv2);
@@ -154,7 +154,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_tagsv2 = &format!(
-        "SELECT `tags`.* FROM `tags` WHERE `tags`.`id` IN ({})",
+        "SELECT tags.* FROM tags WHERE tags.id IN ({})",
         tags
     );
     println!("{}", select_tagsv2);
@@ -169,10 +169,10 @@ where
             .chain(stories.iter().map(|s| s as &UserId))
             .collect();
         let select_votes = &format!(
-            "SELECT `votes`.* FROM `votes` \
-             WHERE `votes`.`user_id` = ? \
-             AND `votes`.`story_id` IN ({}) \
-             AND `votes`.`comment_id` IS NULL",
+            "SELECT votes.* FROM votes \
+             WHERE votes.user_id = ? \
+             AND votes.story_id IN ({}) \
+             AND votes.comment_id IS NULL",
             story_params
         );
         let mut values_str = String::from("");
@@ -195,10 +195,10 @@ where
             .chain(stories.iter().map(|s| s as &_))
             .collect();
         let select_hiddenv2 = &format!(
-            "SELECT `hidden_stories`.* \
-             FROM `hidden_stories` \
-             WHERE `hidden_stories`.`user_id` = ? \
-             AND `hidden_stories`.`story_id` IN ({})",
+            "SELECT hidden_stories.* \
+             FROM hidden_stories \
+             WHERE hidden_stories.user_id = ? \
+             AND hidden_stories.story_id IN ({})",
             story_params
         );
         let log_hiddenv2 = select_hiddenv2.replace("?", &values_str);
@@ -214,10 +214,10 @@ where
             .chain(stories.iter().map(|s| s as &_))
             .collect();
         let select_saved = &format!(
-            "SELECT `saved_stories`.* \
-             FROM `saved_stories` \
-             WHERE `saved_stories`.`user_id` = ? \
-             AND `saved_stories`.`story_id` IN ({})",
+            "SELECT saved_stories.* \
+             FROM saved_stories \
+             WHERE saved_stories.user_id = ? \
+             AND saved_stories.story_id IN ({})",
             story_params
         );
         let log_saved = select_saved.replace("?", &values_str);

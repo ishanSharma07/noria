@@ -18,8 +18,8 @@ where
     let user = acting_as.unwrap();
 
     // check that tags are active
-    let select_tags = "SELECT  `tags`.* FROM `tags` \
-     WHERE `tags`.`inactive` = 0 AND `tags`.`tag` IN ('test')";
+    let select_tags = "SELECT  tags.* FROM tags \
+     WHERE tags.inactive = 0 AND tags.tag IN ('test')";
     println!("{}", select_tags);
     let (mut c, tag) = c
         .first::<_, my::Row>(
@@ -30,8 +30,8 @@ where
 
     if !priming {
         // check that story id isn't already assigned
-        let select_stories = "SELECT  1 AS one FROM `stories` \
-         WHERE `stories`.`short_id` = ?";
+        let select_stories = "SELECT  1 AS one FROM stories \
+         WHERE stories.short_id = ?";
         let log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
         c = c
@@ -43,9 +43,9 @@ where
     }
 
     // TODO: check for similar stories if there's a url
-    // SELECT  `stories`.*
-    // FROM `stories`
-    // WHERE `stories`.`url` IN (
+    // SELECT  stories.*
+    // FROM stories
+    // WHERE stories.url IN (
     //  'https://google.com/test',
     //  'http://google.com/test',
     //  'https://google.com/test/',
@@ -55,19 +55,19 @@ where
     // AND (is_expired = 0 OR is_moderated = 1)
 
     // TODO
-    // real impl queries `tags` and `users` again here..?
+    // real impl queries tags and users again here..?
 
     // TODO: real impl checks *new* short_id and duplicate urls *again*
     // TODO: sometimes submit url
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
-    let insert_stories = "INSERT INTO `stories` \
-     (`created_at`, `user_id`, `title`, \
-     `description`, `short_id`, `upvotes`, `hotness`, \
-     `markeddown_description`,\
-     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`,\
-     `story_cache`, `merged_story_id`, `unavailable_at`, `twitter_id`, `user_is_author`) \
+    let insert_stories = "INSERT INTO stories \
+     (created_at, user_id, title, \
+     description, short_id, upvotes, hotness, \
+     markeddown_description,\
+     url, is_expired, downvotes, is_moderated, comments_count,\
+     story_cache, merged_story_id, unavailable_at, twitter_id, user_is_author) \
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)";
     let q = c
         .prep_exec(
@@ -85,12 +85,12 @@ where
         )
         .await?;
     let story = q.last_insert_id().unwrap();
-    let log_query = format!("INSERT INTO `stories` \
-     (`id`, `created_at`, `user_id`, `title`, \
-     `description`, `short_id`, `upvotes`, `hotness`, \
-     `markeddown_description`,\
-     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`,\
-     `story_cache`, `merged_story_id`, `unavailable_at`, `twitter_id`, `user_is_author`) \
+    let log_query = format!("INSERT INTO stories \
+     (id, created_at, user_id, title, \
+     description, short_id, upvotes, hotness, \
+     markeddown_description,\
+     url, is_expired, downvotes, is_moderated, comments_count,\
+     story_cache, merged_story_id, unavailable_at, twitter_id, user_is_author) \
      VALUES ({}, '{}', {}, '{}', '{}', '{}', {}, {}, '{}', '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
      story, &(chrono::Local::now().naive_local()).to_string(), user, title,
      "to infinity", ::std::str::from_utf8(&id[..]).unwrap(), 1, -19217,
@@ -99,7 +99,7 @@ where
 
     let mut c = q.drop_result().await?;
 
-    let insert_taggings = "INSERT INTO `taggings` (`story_id`, `tag_id`) \
+    let insert_taggings = "INSERT INTO taggings (story_id, tag_id) \
      VALUES (?, ?)";
     c = c
         .drop_exec(
@@ -109,14 +109,14 @@ where
         .await?;
 
     let id = c.last_insert_id().unwrap();
-    let mut log_query = format!("INSERT INTO `taggings` (`id`, `story_id`, `tag_id`) \
+    let mut log_query = format!("INSERT INTO taggings (id, story_id, tag_id) \
      VALUES ({}, {}, {})", id, story, tag.unwrap());
     println!("{}", log_query);
 
     let key = format!("'user:{}:stories_submitted'", user);
-    let insert_keystore = "INSERT INTO keystores (`keyX`, `valueX`) \
+    let insert_keystore = "INSERT INTO keystores (keyX, valueX) \
      VALUES (?, ?) \
-     ON DUPLICATE KEY UPDATE `keystores`.`valueX` = `keystores`.`valueX` + 1";
+     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
     log_query = insert_keystore
     .replacen("?", &key, 1)
     .replacen("?", "1", 1);
@@ -130,9 +130,9 @@ where
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);
-        let select_keystore = "SELECT  `keystores`.* \
-         FROM `keystores` \
-         WHERE `keystores`.`key` = ?";
+        let select_keystore = "SELECT  keystores.* \
+         FROM keystores \
+         WHERE keystores.keyX = ?";
         log_query = select_keystore.replace("?", &key);
         println!("{}", log_query);
         c = c
@@ -142,10 +142,10 @@ where
             )
             .await?;
 
-        let select_votes = "SELECT  `votes`.* FROM `votes` \
-         WHERE `votes`.`user_id` = ? \
-         AND `votes`.`story_id` = ? \
-         AND `votes`.`comment_id` IS NULL";
+        let select_votes = "SELECT  votes.* FROM votes \
+         WHERE votes.user_id = ? \
+         AND votes.story_id = ? \
+         AND votes.comment_id IS NULL";
         log_query = select_votes
         .replacen("?", &user.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
@@ -158,8 +158,8 @@ where
             .await?;
     }
 
-    let insert_votes = "INSERT INTO `votes` \
-     (`user_id`, `story_id`, `vote`, `comment_id`, `reason`) \
+    let insert_votes = "INSERT INTO votes \
+     (user_id, story_id, vote, comment_id, reason) \
      VALUES (?, ?, ?, NULL, NULL)";
     c = c
         .drop_exec(
@@ -168,20 +168,20 @@ where
         )
         .await?;
     let vote_insert_id = c.last_insert_id().unwrap();
-    log_query = format!("INSERT INTO `votes` \
-     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+    log_query = format!("INSERT INTO votes \
+     (id, user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, NULL, {}, NULL)", vote_insert_id, user, story, 1);
     println!("{}", log_query);
 
     if !priming {
         let select_comments = "SELECT \
-         `comments`.`upvotes`, \
-         `comments`.`downvotes` \
-         FROM `comments` \
-         JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
-         WHERE `comments`.`story_id` = ? \
-         AND `comments`.`user_id` <> `stories`.`user_id`";
+         comments.upvotes, \
+         comments.downvotes \
+         FROM comments \
+         JOIN stories ON (stories.id = comments.story_id) \
+         WHERE comments.story_id = ? \
+         AND comments.user_id <> stories.user_id";
         log_query = select_comments.replace("?", &story.to_string());
         println!("{}", log_query);
         c = c
@@ -192,9 +192,9 @@ where
             .await?;
 
         // why oh why is story hotness *updated* here?!
-        let update_hotness = "UPDATE `stories` \
-         SET `hotness` = ? \
-         WHERE `stories`.`id` = ?";
+        let update_hotness = "UPDATE stories \
+         SET hotness = ? \
+         WHERE stories.id = ?";
         log_query = update_hotness
         .replacen("?", "-19217", 1)
         .replacen("?", &story.to_string(), 1);

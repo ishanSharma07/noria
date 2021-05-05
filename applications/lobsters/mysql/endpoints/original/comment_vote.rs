@@ -14,9 +14,9 @@ where
 {
     let c = c.await?;
     let user = acting_as.unwrap();
-    let select_comments = "SELECT `comments`.* \
-     FROM `comments` \
-     WHERE `comments`.`short_id` = ?";
+    let select_comments = "SELECT comments.* \
+     FROM comments \
+     WHERE comments.short_id = ?";
     let mut log_query = select_comments.replace("?", ::std::str::from_utf8(&comment[..]).unwrap());
     println!("{}", log_query);
     let (mut c, comment) = c
@@ -32,11 +32,11 @@ where
     let upvotes = comment.get::<u32, _>("upvotes").unwrap();
     let downvotes = comment.get::<u32, _>("downvotes").unwrap();
     let comment = comment.get::<u32, _>("id").unwrap();
-    let select_votes = "SELECT  `votes`.* \
-     FROM `votes` \
-     WHERE `votes`.`user_id` = ? \
-     AND `votes`.`story_id` = ? \
-     AND `votes`.`comment_id` = ?";
+    let select_votes = "SELECT  votes.* \
+     FROM votes \
+     WHERE votes.user_id = ? \
+     AND votes.story_id = ? \
+     AND votes.comment_id = ?";
     log_query = select_votes
     .replacen("?", &user.to_string(), 1)
     .replacen("?", &sid.to_string(), 1)
@@ -54,8 +54,8 @@ where
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
-    let insert_votes = "INSERT INTO `votes` \
-     (`user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+    let insert_votes = "INSERT INTO votes \
+     (user_id, story_id, comment_id, vote, reason) \
      VALUES \
      (?, ?, ?, ?, NULL)";
     let q = c
@@ -73,8 +73,8 @@ where
         )
         .await?;
     let vote_insert_id = q.last_insert_id().unwrap();
-    log_query = format!("INSERT INTO `votes` \
-     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+    log_query = format!("INSERT INTO votes \
+     (id, user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, sid,
      comment, match v {
@@ -86,9 +86,9 @@ where
     let mut c = q.drop_result().await?;
 
     let update_users = &format!(
-        "UPDATE `users` \
-         SET `users`.`karma` = `users`.`karma` {} \
-         WHERE `users`.`id` = ?",
+        "UPDATE users \
+         SET users.karma = users.karma {} \
+         WHERE users.id = ?",
         match v {
             Vote::Up => "+ 1",
             Vote::Down => "- 1",
@@ -106,12 +106,12 @@ where
     // approximate Comment::calculate_hotness
     let confidence = (upvotes as f64 / (upvotes as f64 + downvotes as f64)).ceil();
     let update_comments = &format!(
-        "UPDATE `comments` \
+        "UPDATE comments \
          SET \
-         `comments`.`upvotes` = `comments`.`upvotes` {}, \
-         `comments`.`downvotes` = `comments`.`downvotes` {}, \
-         `comments`.`confidence` = ? \
-         WHERE `id` = ?",
+         comments.upvotes = comments.upvotes {}, \
+         comments.downvotes = comments.downvotes {}, \
+         comments.confidence = ? \
+         WHERE id = ?",
         match v {
             Vote::Up => "+ 1",
             Vote::Down => "+ 0",
@@ -133,9 +133,9 @@ where
         .await?;
 
     // get all the stuff needed to compute updated hotness
-    let select_stories = "SELECT `stories`.* \
-     FROM `stories` \
-     WHERE `stories`.`id` = ?";
+    let select_stories = "SELECT stories.* \
+     FROM stories \
+     WHERE stories.id = ?";
     log_query = select_stories
       .replace("?", &sid.to_string());
     println!("{}", log_query);
@@ -148,10 +148,10 @@ where
     let story = story.unwrap();
     let score = story.get::<i64, _>("hotness").unwrap();
 
-    let select_tags = "SELECT `tags`.* \
-     FROM `tags` \
-     INNER JOIN `taggings` ON `tags`.`id` = `taggings`.`tag_id` \
-     WHERE `taggings`.`story_id` = ?";
+    let select_tags = "SELECT tags.* \
+     FROM tags \
+     INNER JOIN taggings ON tags.id = taggings.tag_id \
+     WHERE taggings.story_id = ?";
      log_query = select_tags
        .replace("?", &sid.to_string());
      println!("{}", log_query);
@@ -163,12 +163,12 @@ where
         .await?;
 
     let select_commentsv2 = "SELECT \
-     `comments`.`upvotes`, \
-     `comments`.`downvotes` \
-     FROM `comments` \
-     JOIN `stories` ON (`stories`.`id` = `comments`.`story_id`) \
-     WHERE `comments`.`story_id` = ? \
-     AND `comments`.`user_id` <> `stories`.`user_id`";
+     comments.upvotes, \
+     comments.downvotes \
+     FROM comments \
+     JOIN stories ON (stories.id = comments.story_id) \
+     WHERE comments.story_id = ? \
+     AND comments.user_id <> stories.user_id";
      log_query = select_commentsv2
        .replace("?", &sid.to_string());
      println!("{}", log_query);
@@ -179,9 +179,9 @@ where
         )
         .await?;
 
-    let select_storiesv2 = "SELECT `stories`.`id` \
-     FROM `stories` \
-     WHERE `stories`.`merged_story_id` = ?";
+    let select_storiesv2 = "SELECT stories.id \
+     FROM stories \
+     WHERE stories.merged_story_id = ?";
     log_query = select_storiesv2
        .replace("?", &sid.to_string());
     println!("{}", log_query);
