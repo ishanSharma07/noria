@@ -76,8 +76,8 @@ where
     log_query = format!("INSERT INTO `votes` \
      (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
      VALUES \
-     ({}, {}, {}, {}, {}, NULL)", vote_insert_id, &user.to_string(),&sid.to_string(),
-     &comment.to_string(), match v {
+     ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, sid,
+     comment, match v {
          Vote::Up => "1",
          Vote::Down => "0",
      });

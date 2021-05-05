@@ -101,10 +101,6 @@ where
 
     let insert_taggings = "INSERT INTO `taggings` (`story_id`, `tag_id`) \
      VALUES (?, ?)";
-    let mut log_query = insert_taggings
-    .replacen("?", &story.to_string(), 1)
-    .replacen("?", &tag.unwrap().to_string(), 1);
-    println!("{}", log_query);
     c = c
         .drop_exec(
             insert_taggings,
@@ -112,10 +108,15 @@ where
         )
         .await?;
 
+    let id = c.last_insert_id().unwrap();
+    let mut log_query = format!("INSERT INTO `taggings` (`id`, `story_id`, `tag_id`) \
+     VALUES ({}, {}, {})", id, story, tag.unwrap());
+    println!("{}", log_query);
+
     let key = format!("'user:{}:stories_submitted'", user);
-    let insert_keystore = "INSERT INTO keystores (`key`, `value`) \
+    let insert_keystore = "INSERT INTO keystores (`keyX`, `valueX`) \
      VALUES (?, ?) \
-     ON DUPLICATE KEY UPDATE `keystores`.`value` = `keystores`.`value` + 1";
+     ON DUPLICATE KEY UPDATE `keystores`.`valueX` = `keystores`.`valueX` + 1";
     log_query = insert_keystore
     .replacen("?", &key, 1)
     .replacen("?", "1", 1);
@@ -160,17 +161,18 @@ where
     let insert_votes = "INSERT INTO `votes` \
      (`user_id`, `story_id`, `vote`, `comment_id`, `reason`) \
      VALUES (?, ?, ?, NULL, NULL)";
-    log_query = insert_votes
-    .replacen("?", &user.to_string(), 1)
-    .replacen("?", &story.to_string(), 1)
-    .replacen("?", "1", 1);
-    println!("{}", log_query);
     c = c
         .drop_exec(
             insert_votes,
             (user, story, 1),
         )
         .await?;
+    let vote_insert_id = c.last_insert_id().unwrap();
+    log_query = format!("INSERT INTO `votes` \
+     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+     VALUES \
+     ({}, {}, {}, NULL, {}, NULL)", vote_insert_id, user, story, 1);
+    println!("{}", log_query);
 
     if !priming {
         let select_comments = "SELECT \

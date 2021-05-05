@@ -65,17 +65,18 @@ where
                 let insert_ribbon = "INSERT INTO `read_ribbons` \
                      (`created_at`, `updated_at`, `user_id`, `story_id`, `is_following`) \
                      VALUES (?, ?, ?, ?, 1)";
-                log_query = insert_ribbon
-                .replacen("?", &format!("'{}'", &now.to_string()), 1)
-                .replacen("?", &format!("'{}'", &now.to_string()), 1)
-                .replacen("?", &uid.to_string(), 1)
-                .replacen("?", &story.to_string(), 1);
-                println!("{}", log_query);
-                x.drop_exec(
+                let r = x.drop_exec(
                     insert_ribbon,
                     (now, now, uid, story),
                 )
-                .await?
+                .await?;
+                let id = r.last_insert_id().unwrap();
+                log_query = format!("INSERT INTO `read_ribbons` \
+                     (`id`, `created_at`, `updated_at`, `user_id`, `story_id`, `is_following`) \
+                     VALUES ({}, '{}', '{}', {}, {}, 1)",
+                     id, now, now, uid, story);
+                println!("{}", log_query);
+                r
             }
             Some(rr) => {
                 let update_ribbon = "UPDATE `read_ribbons` \

@@ -56,14 +56,6 @@ where
     let insert_votes = "INSERT INTO `votes` \
      (`user_id`, `story_id`, `vote`, `comment_id`, `reason`) \
      VALUES (?, ?, ?, NULL, NULL)";
-    log_query = insert_votes
-    .replacen("?", &user.to_string(), 1)
-    .replacen("?", &story.to_string(), 1)
-    .replacen("?", match v {
-        Vote::Up => "1",
-        Vote::Down => "0",
-    }, 1);
-    println!("{}", log_query);
     c = c
         .drop_exec(
             insert_votes,
@@ -77,6 +69,16 @@ where
             ),
         )
         .await?;
+    let vote_insert_id = c.last_insert_id().unwrap();
+    log_query = format!("INSERT INTO `votes` \
+     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+     VALUES \
+     ({}, {}, {}, NULL, {}, NULL)", vote_insert_id, user, story,
+     match v {
+         Vote::Up => "1",
+         Vote::Down => "0",
+     });
+    println!("{}", log_query);
 
     let update_users = &format!(
         "UPDATE `users` \
