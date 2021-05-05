@@ -79,7 +79,7 @@ where
                 "to infinity", // lorem ipsum?
                 ::std::str::from_utf8(&id[..]).unwrap(),
                 1,
-                -19217,
+                19217,
                 "<p>to infinity</p>\n",
             ),
         )
@@ -93,7 +93,7 @@ where
      story_cache, merged_story_id, unavailable_at, twitter_id, user_is_author) \
      VALUES ({}, '{}', {}, '{}', '{}', '{}', {}, {}, '{}', '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
      story, &(chrono::Local::now().naive_local()).to_string(), user, title,
-     "to infinity", ::std::str::from_utf8(&id[..]).unwrap(), 1, -19217,
+     "to infinity", ::std::str::from_utf8(&id[..]).unwrap(), 1, 19217,
      "<p>to infinity</p>\\n");
     println!("{}", log_query);
 
@@ -196,13 +196,13 @@ where
          SET hotness = ? \
          WHERE stories.id = ?";
         log_query = update_hotness
-        .replacen("?", "-19217", 1)
+        .replacen("?", "19217", 1)
         .replacen("?", &story.to_string(), 1);
         println!("{}", log_query);
         c = c
             .drop_exec(
                 update_hotness,
-                (-19217, story),
+                (19217, story),
             )
             .await?;
     }
