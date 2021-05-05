@@ -10,6 +10,8 @@ where_pattern = re.compile('SELECT .* WHERE')
 condition_pattern = re.compile('[\w\.]+ [=|!=|<|>|<=|>=] \?')
 predef_condition_pttern = re.compile('[\w\.]+ [=|!=|<|>|<=|>=] [\w\d\']+')
 view_name_pattern = re.compile('CREATE VIEW [\w\d]+ AS')
+where_in_pattern = re.compile('[\w\.]+ IN \([\w\d\',]+\)')
+in_value_pattern = re.compile('\([\w\d\',]+\)')
 
 def build_inverted_index(view_definitions):
     index = dict()
@@ -42,7 +44,10 @@ def semantically_equal(view_constraints, query_constraints):
     if len(view_constraints) != len(query_constraints):
         return False
     for i in range(len(view_constraints)):
-        if query_constraints[i].find(view_constraints[i][:-1]) == -1:
+        if " IN " in query_constraints[i]:
+            if query_constraints[i].find(view_constraints[i][:-4]) == -1:
+                return False
+        elif query_constraints[i].find(view_constraints[i][:-1]) == -1:
             return False
     return True
 
@@ -62,8 +67,14 @@ def build_where_clause(view_constraints, query_constraints):
             query_constraints_subset.append(query_constraints[i])
     for i in range(len(view_constraints_subset)):
         # everything except `?`
-        left_expression = view_constraints_subset[i][:-1]
-        value = re.split(left_expression, query_constraints_subset[i])[1]
+        left_expression = ""
+        value = ""
+        if " IN " in query_constraints_subset[i]:
+            left_expression = view_constraints_subset[i][:-4] + " IN "
+            value = re.findall(in_value_pattern, query_constraints_subset[i])[0]
+        else:
+            left_expression = view_constraints_subset[i][:-1]
+            value = re.split(left_expression, query_constraints_subset[i])[1]
         where_clause = where_clause + left_expression
         where_clause = where_clause + value
         where_clause = where_clause + " AND "
@@ -79,6 +90,8 @@ def transform_query(index, query):
              initial_chunk, query, index.keys()))
     sub_map = index[initial_chunk]
     query_constraints = re.findall(predef_condition_pttern, subseq_chunk)
+    query_constraints = query_constraints + re.findall(where_in_pattern, subseq_chunk)
+
     if len(sub_map)!=0:
         for key, view_name in sub_map.items():
             if contains_variable_constraint(key.split("&")) == False:
@@ -112,7 +125,7 @@ if __name__=="__main__":
     # Transform queries and flush to file
     out_file = open("transformed_trace.sql", "w")
     for trace in traces:
-        if trace == "" or trace.startswith("--") or trace.startswith("INSERT"):
+        if trace == "" or trace.startswith("--") or trace.startswith("INSERT") or trace.startswith("REPLACE") or trace.startswith("UPDATE"):
             continue
         tq = transform_query(index, trace)
         print(tq)
