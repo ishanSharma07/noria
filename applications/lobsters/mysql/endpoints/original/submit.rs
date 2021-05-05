@@ -69,23 +69,13 @@ where
      `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`,\
      `story_cache`, `merged_story_id`, `unavailable_at`, `twitter_id`, `user_is_author`) \
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)";
-    let log_query = insert_stories
-    .replacen("?", &format!("'{}'", &(chrono::Local::now().naive_local()).to_string()), 1)
-    .replacen("?", &user.to_string(), 1)
-    .replacen("?", &format!("'{}'", &title), 1)
-    .replacen("?", "'to infinity'", 1)
-    .replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1)
-    .replacen("?", "1", 1)
-    .replacen("?", "-19217", 1)
-    .replacen("?", "'<p>to infinity</p>\\n'", 1);
-    println!("{}", log_query);
     let q = c
         .prep_exec(
             insert_stories,
             (
                 chrono::Local::now().naive_local(),
                 user,
-                title,
+                title.clone(),
                 "to infinity", // lorem ipsum?
                 ::std::str::from_utf8(&id[..]).unwrap(),
                 1,
@@ -95,6 +85,18 @@ where
         )
         .await?;
     let story = q.last_insert_id().unwrap();
+    let log_query = format!("INSERT INTO `stories` \
+     (`id`, `created_at`, `user_id`, `title`, \
+     `description`, `short_id`, `upvotes`, `hotness`, \
+     `markeddown_description`,\
+     `url`, `is_expired`, `downvotes`, `is_moderated`, `comments_count`,\
+     `story_cache`, `merged_story_id`, `unavailable_at`, `twitter_id`, `user_is_author`) \
+     VALUES ({}, '{}', {}, '{}', '{}', '{}', {}, {}, '{}', '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
+     story, &(chrono::Local::now().naive_local()).to_string(), user, title,
+     "to infinity", ::std::str::from_utf8(&id[..]).unwrap(), 1, -19217,
+     "<p>to infinity</p>\\n");
+    println!("{}", log_query);
+
     let mut c = q.drop_result().await?;
 
     let insert_taggings = "INSERT INTO `taggings` (`story_id`, `tag_id`) \
