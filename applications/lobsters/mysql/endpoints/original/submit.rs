@@ -114,9 +114,9 @@ where
     println!("{}", log_query);
 
     let key = format!("'user:{}:stories_submitted'", user);
-    let insert_keystore = "INSERT INTO keystores (keyX, valueX) \
-     VALUES (?, ?) \
-     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
+    let insert_keystore = "REPLACE INTO keystores (keyX, valueX) \
+     VALUES (?, ?)"; // \
+//     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
     log_query = insert_keystore
     .replacen("?", &key, 1)
     .replacen("?", "1", 1);
