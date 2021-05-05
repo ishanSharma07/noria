@@ -47,7 +47,7 @@ where
 
     let parent = if let Some(parent) = parent {
         // check that parent exists
-        let select_comments = "SELECT  comments.* FROM comments \
+        let select_comments = "SELECT comments.* FROM comments \
          WHERE comments.story_id = ? \
          AND comments.short_id = ?";
         log_query = select_comments.replacen("?", &story.to_string(), 1);
