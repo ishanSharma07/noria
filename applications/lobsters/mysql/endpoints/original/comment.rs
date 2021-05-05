@@ -241,9 +241,7 @@ where
         .reduce_and_drop(0, |rows, _| rows + 1)
         .await?;
 
-    let udpate_stories = "UPDATE stories \
-                                     SET comments_count = ?
-                                     WHERE stories.id = ?";
+    let udpate_stories = "UPDATE stories SET comments_count = ? WHERE stories.id = ?";
     log_query = udpate_stories.replacen("?", &count.to_string(), 1);
     log_query = log_query.replacen("?", &story.to_string(), 1);
     println!("{}", log_query);
