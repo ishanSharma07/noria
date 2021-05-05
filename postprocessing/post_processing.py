@@ -74,6 +74,9 @@ def build_where_clause(view_constraints, query_constraints):
 def transform_query(index, query):
     initial_chunk = re.findall(where_pattern, query)[0]
     subseq_chunk = re.split(where_pattern, query)[1]
+    if not initial_chunk in index:
+        exit("ERROR: unknown query stem {}\n\nQuery was: {}\n\nKnown stems: {}".format(
+             initial_chunk, query, index.keys()))
     sub_map = index[initial_chunk]
     query_constraints = re.findall(predef_condition_pttern, subseq_chunk)
     if len(sub_map)!=0:
@@ -109,7 +112,9 @@ if __name__=="__main__":
     # Transform queries and flush to file
     out_file = open("transformed_trace.sql", "w")
     for trace in traces:
-        if trace == "" or trace[0]=="-" or trace[0] == "I":
+        if trace == "" or trace.startswith("--") or trace.startswith("INSERT"):
             continue
-        out_file.write(transform_query(index, trace) + "\n")
+        tq = transform_query(index, trace)
+        print(tq)
+        out_file.write(tq + "\n")
     out_file.close()
