@@ -58,17 +58,8 @@ where
      (`user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
      VALUES \
      (?, ?, ?, ?, NULL)";
-    log_query = insert_votes
-     .replacen("?", &user.to_string(), 1)
-     .replacen("?", &sid.to_string(), 1)
-     .replacen("?", &comment.to_string(), 1)
-     .replacen("?", match v {
-         Vote::Up => "1",
-         Vote::Down => "0",
-     }, 1);
-    println!("{}", log_query);
-    c = c
-        .drop_exec(
+    let q = c
+        .prep_exec(
             insert_votes,
             (
                 user,
@@ -81,6 +72,19 @@ where
             ),
         )
         .await?;
+    let vote_insert_id = q.last_insert_id().unwrap();
+    log_query = format!("INSERT INTO `votes` \
+     (`id`, `user_id`, `story_id`, `comment_id`, `vote`, `reason`) \
+     VALUES \
+     ({}, {}, {}, {}, {}, NULL)", vote_insert_id, &user.to_string(),&sid.to_string(),
+     &comment.to_string(), match v {
+         Vote::Up => "1",
+         Vote::Down => "0",
+     });
+    println!("{}", log_query);
+
+    let mut c = q.drop_result().await?;
+
     let update_users = &format!(
         "UPDATE `users` \
          SET `users`.`karma` = `users`.`karma` {} \
