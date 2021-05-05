@@ -144,16 +144,6 @@ where
          markeddown_comment, downvotes, is_deleted, is_moderated, \
          is_from_email, hat_id, parent_comment_id, thread_id) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, NULL)";
-         log_query = insert_comments.replacen("?", &format!("'{}'", &now.to_string()), 1);
-         log_query = log_query.replacen("?", &format!("'{}'", &now.to_string()), 1);
-         log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()), 1);
-         log_query = log_query.replacen("?", &story.to_string(), 1);
-         log_query = log_query.replacen("?", &user.to_string(), 1);
-         log_query = log_query.replacen("?", "'moar benchmarking'", 1);
-         log_query = log_query.replacen("?", "1", 1);
-         log_query = log_query.replacen("?", "1", 1);
-         log_query = log_query.replacen("?", "'<p>moar benchmarking</p>\\n'", 1);
-        println!("{}", log_query);
         let r = c.prep_exec(
             insert_comments,
             (
