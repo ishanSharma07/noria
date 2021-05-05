@@ -159,7 +159,7 @@ where
     }
 
     let insert_votes = "INSERT INTO votes \
-     (user_id, story_id, vote, comment_id, reason) \
+     (OWNER_user_id, story_id, vote, comment_id, reason) \
      VALUES (?, ?, ?, NULL, NULL)";
     c = c
         .drop_exec(
@@ -169,7 +169,7 @@ where
         .await?;
     let vote_insert_id = c.last_insert_id().unwrap();
     log_query = format!("INSERT INTO votes \
-     (id, user_id, story_id, comment_id, vote, reason) \
+     (id, OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, NULL, {}, NULL)", vote_insert_id, user, story, 1);
     println!("{}", log_query);

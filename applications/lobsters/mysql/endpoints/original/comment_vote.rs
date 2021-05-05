@@ -55,7 +55,7 @@ where
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
     let insert_votes = "INSERT INTO votes \
-     (user_id, story_id, comment_id, vote, reason) \
+     (OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      (?, ?, ?, ?, NULL)";
     let q = c
@@ -74,7 +74,7 @@ where
         .await?;
     let vote_insert_id = q.last_insert_id().unwrap();
     log_query = format!("INSERT INTO votes \
-     (id, user_id, story_id, comment_id, vote, reason) \
+     (id, OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, sid,
      comment, match v {
