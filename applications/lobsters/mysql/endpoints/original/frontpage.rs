@@ -16,8 +16,8 @@ where
     let select_stories = "SELECT  stories.* FROM stories \
      WHERE stories.merged_story_id IS NULL \
      AND stories.is_expired = 0 \
-     AND ((CAST(upvotes AS signed) - CAST(downvotes AS signed)) >= 0) \
-     ORDER BY hotness LIMIT 51 OFFSET 0";
+     AND (upvotes - downvotes) >= 0) \
+     ORDER BY hotness LIMIT 51";
     let log_query = select_stories;
     println!("{}", log_query);
     let stories = c
@@ -232,4 +232,3 @@ where
 
     Ok((c, true))
 }
-

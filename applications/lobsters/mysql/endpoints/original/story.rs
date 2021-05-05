@@ -113,7 +113,7 @@ where
      FROM comments \
      WHERE comments.story_id = ? \
      ORDER BY \
-     (CAST(upvotes AS signed) - CAST(downvotes AS signed)) < 0 ASC, \
+     (upvotes - downvotes) < 0 ASC, \
      confidence DESC";
     log_query = select_comments
     .replace("?", &story.to_string());
