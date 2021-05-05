@@ -273,9 +273,9 @@ where
          comments.upvotes, \
          comments.downvotes \
          FROM comments \
-         JOIN stories ON (stories.id = comments.story_id) \
+         JOIN stories ON stories.id = comments.story_id \
          WHERE comments.story_id = ? \
-         AND comments.user_id <> stories.user_id";
+         AND comments.user_id != stories.user_id";
         log_query = select_commentsv3.replace("?", &story.to_string());
         println!("{}", log_query);
         c = c
