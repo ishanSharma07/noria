@@ -227,7 +227,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                             `mailing_list_mode`, `karma`, `banned_at`, `banned_by_user_id`, \
                             `banned_reason`, `deleted_at`, `disabled_invite_at`, \
                             `disabled_invite_by_user_id`, `disabled_invite_reason`, `settings`) \
-                            VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
+                            VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
                                 NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)";
                             let log_insert = insert_query
                             .replacen("?", &uid.to_string(), 1)
