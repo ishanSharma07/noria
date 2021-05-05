@@ -208,7 +208,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Login => {
                         let c = c.await?;
-                        let select_query = "SELECT 1 as one FROM users WHERE users.PII_username = '?'";
+                        let select_query = "SELECT 1 AS `one` FROM users WHERE users.PII_username = '?'";
                         let log_select = select_query.replace("?", &acting_as.unwrap().to_string());
                         println!("{}", log_select);
                         let (mut c, user) = c
