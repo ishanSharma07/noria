@@ -26,8 +26,8 @@ where
 
     // most popular tag
     let select_tags = "SELECT tags.id, count(*) AS `count` FROM tags \
-     INNER JOIN taggings ON taggings.tag_id = tags.id \
-     INNER JOIN stories ON stories.id = taggings.story_id \
+     INNER JOIN taggings ON tags.id = taggings.tag_id \
+     INNER JOIN stories ON taggings.story_id = stories.id \
      WHERE tags.inactive = 0 \
      AND stories.user_id = ? \
      GROUP BY tags.id \
