@@ -1,18 +1,18 @@
 --needs column/column filter, left join
---CREATE VIEW replying_comments_for_count AS \
---	'"SELECT read_ribbons.user_id, read_ribbons.story_id, comments.id \
---	FROM read_ribbons \
---	JOIN stories ON (stories.id = read_ribbons.story_id) \
---	JOIN comments ON (comments.story_id = read_ribbons.story_id) \
---	LEFT JOIN comments AS parent_comments \
---	ON (parent_comments.id = comments.parent_comment_id) \
---	WHERE read_ribbons.is_following = 1 \
---	AND comments.user_id <> read_ribbons.user_id \
---	AND comments.is_deleted = 0 \
---	AND comments.is_moderated = 0 \
---	AND ( comments.upvotes - comments.downvotes ) >= 0 \
---	AND read_ribbons.updated_at < comments.created_at \
---	AND ( \
+-- CREATE VIEW replying_comments_for_count AS \
+-- 	'"SELECT read_ribbons.user_id, read_ribbons.story_id, comments.id \
+-- 	FROM read_ribbons \
+-- 	JOIN stories ON (read_ribbons.story_id = stories.id) \
+-- 	JOIN comments ON (read_ribbons.story_id = comments.story_id) \
+-- 	LEFT JOIN comments AS parent_comments \
+-- 	ON (comments.parent_comment_id = parent_comments.id) \
+-- 	WHERE read_ribbons.is_following = 1 \
+-- 	AND comments.user_id != read_ribbons.user_id \
+-- 	AND comments.is_deleted = 0 \
+-- 	AND comments.is_moderated = 0 \
+-- 	AND ( comments.upvotes - comments.downvotes ) >= 0 \
+-- 	AND read_ribbons.updated_at < comments.created_at \
+-- 	AND ( \
 --     ( \
 --            parent_comments.user_id = read_ribbons.user_id \
 --            AND \
@@ -56,11 +56,11 @@ CREATE VIEW q26 AS '"SELECT taggings.* FROM taggings WHERE taggings.story_id = ?
 CREATE VIEW q27 AS '"SELECT 1 AS `one` FROM hats WHERE hats.OWNER_user_id = ? LIMIT 1"';
 CREATE VIEW q28 AS '"SELECT suggested_taggings.* FROM suggested_taggings WHERE suggested_taggings.story_id = ?"';
 CREATE VIEW q29 AS '"SELECT tags.* FROM tags WHERE tags.id = ?"';
---needs the big matview
---CREATE VIEW q29 AS '"SELECT replying_comments_for_count.user_id, count(*) AS notifications FROM replying_comments_for_count WHERE replying_comments_for_count.user_id = ?"';
 CREATE VIEW q30 AS '"SELECT comments.* FROM comments WHERE comments.is_deleted = 0 AND comments.is_moderated = 0 ORDER BY id DESC LIMIT 40"';
 CREATE VIEW q31 AS '"SELECT 1 FROM hidden_stories WHERE hidden_stories.user_id = ? AND hidden_stories.story_id = ?"';
 CREATE VIEW q32 AS '"SELECT stories.* FROM stories WHERE stories.id = ?"';
 CREATE VIEW q33 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q34 AS '"SELECT comments.* FROM comments WHERE comments.short_id = ?"';
 CREATE VIEW q35 AS '"SELECT stories.* FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 AND stories.upvotes - stories.downvotes <= 5 ORDER BY id DESC LIMIT 51"';
+--needs the big matview
+CREATE VIEW q36 AS '"SELECT COUNT(*) FROM replying_comments_for_count WHERE replying_comments_for_count.user_id = ?"';
