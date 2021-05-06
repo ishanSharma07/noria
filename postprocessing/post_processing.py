@@ -10,8 +10,8 @@ where_pattern = re.compile('SELECT .* WHERE')
 condition_pattern = re.compile('[\w\.]+ [=|!=|<|>|<=|>=] \?')
 predef_condition_pttern = re.compile('[\w\.]+ [=|!=|<|>|<=|>=] [\w\d\']+')
 view_name_pattern = re.compile('CREATE VIEW [\w\d]+ AS')
-where_in_pattern = re.compile('[\w\.]+ IN \([\w\d\',]+\)')
-in_value_pattern = re.compile('\([\w\d\',]+\)')
+where_in_pattern = re.compile('[\w\.]+ IN \([\w\d\', ]+\)')
+in_value_pattern = re.compile('\([\w\d\', ]+\)')
 
 def build_inverted_index(view_definitions):
     index = dict()
