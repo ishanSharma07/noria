@@ -12,6 +12,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start frontpage");
     let c = c.await?;
     let select_stories = "SELECT  stories.* FROM stories \
      WHERE stories.merged_story_id IS NULL \
@@ -230,5 +231,6 @@ where
             .await?;
     }
 
+    println!("--end frontpage");
     Ok((c, true))
 }
