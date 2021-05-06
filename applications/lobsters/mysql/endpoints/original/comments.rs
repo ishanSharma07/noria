@@ -38,8 +38,8 @@ where
 
     if let Some(uid) = acting_as {
         let params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let args: Vec<_> = iter::once(&uid as &_)
-            .chain(stories.iter().map(|c| c as &_))
+        let args: Vec<&UserId> = iter::once(&uid as &UserId)
+            .chain(stories.iter().map(|c| c as &UserId))
             .collect();
         let select_one = &format!(
                 "SELECT 1 FROM hidden_stories \
@@ -47,7 +47,11 @@ where
                  AND hidden_stories.story_id IN ({})",
             params
         );
-        println!("{}", select_one);
+        let mut log_query = select_one.clone();
+        for &arg in args.iter(){
+            log_query = log_query.replacen("?", &arg.to_string(), 1)
+        }
+        println!("{}", log_query);
         c = c
             .drop_exec(
                 select_one,
@@ -105,14 +109,10 @@ where
              AND votes.comment_id IN ({})",
             params
         );
-        let mut comments_str = String::from("");
+        let mut log_query = select_votes.clone();
         for &comment in comments.iter(){
-            comments_str.push_str(&comment.to_string());
-            comments_str.push(',');
+            log_query = log_query.replacen("?", &comment.to_string(), 1)
         }
-        // Delete last ','
-        comments_str.pop();
-        let log_query = select_votes.replace("?", &comments_str);
         println!("{}", log_query);
         c = c
             .drop_exec(
