@@ -31,7 +31,7 @@ CREATE VIEW q3 AS '"SELECT tags.* FROM tags WHERE tags.inactive = 0 AND tags.tag
 --needs support for `key` column names (backticks to escape keywords)
 CREATE VIEW q4 AS '"SELECT keystores.* FROM keystores WHERE keystores.keyX = ?"';
 CREATE VIEW q5 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id IS NULL"';
-CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON stories.id = comments.story_id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
+CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON comments.story_id = stories.id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
 CREATE VIEW q7 AS '"SELECT stories.* FROM stories WHERE stories.short_id = ?"';
 CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.id = ?"';
 CREATE VIEW q9 AS '"SELECT 1 AS `one`, short_id FROM comments WHERE comments.short_id = ?"';
