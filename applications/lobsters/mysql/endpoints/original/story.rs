@@ -171,7 +171,7 @@ where
     if let Some(uid) = acting_as {
         let select_votesv2 ="SELECT votes.* \
          FROM votes \
-         WHERE votes.user_id = ? \
+         WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id IS NULL";
         log_query = select_votesv2

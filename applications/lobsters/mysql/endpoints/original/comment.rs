@@ -179,7 +179,7 @@ where
     if !priming {
         // but why?!
         let select_votes = "SELECT  votes.* FROM votes \
-         WHERE votes.user_id = ? \
+         WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id = ?";
         log_query = select_votes.replacen("?", &user.to_string(), 1);

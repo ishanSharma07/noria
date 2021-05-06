@@ -34,7 +34,7 @@ where
     let comment = comment.get::<u32, _>("id").unwrap();
     let select_votes = "SELECT  votes.* \
      FROM votes \
-     WHERE votes.user_id = ? \
+     WHERE votes.OWNER_user_id = ? \
      AND votes.story_id = ? \
      AND votes.comment_id = ?";
     log_query = select_votes

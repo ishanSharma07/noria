@@ -101,7 +101,7 @@ where
             .collect();
         let select_votes = &format!(
             "SELECT votes.* FROM votes \
-             WHERE votes.user_id = ? \
+             WHERE votes.OWNER_user_id = ? \
              AND votes.comment_id IN ({})",
             params
         );

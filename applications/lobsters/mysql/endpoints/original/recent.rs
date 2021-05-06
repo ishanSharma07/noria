@@ -187,7 +187,7 @@ where
             .join(",");
         let select_votes = &format!(
             "SELECT votes.* FROM votes \
-             WHERE votes.user_id = ? \
+             WHERE votes.OWNER_user_id = ? \
              AND votes.story_id IN ({}) \
              AND votes.comment_id IS NULL",
             story_params
