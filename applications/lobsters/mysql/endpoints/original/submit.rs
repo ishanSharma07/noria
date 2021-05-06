@@ -30,7 +30,7 @@ where
 
     if !priming {
         // check that story id isn't already assigned
-        let select_stories = "SELECT  1 AS one FROM stories \
+        let select_stories = "SELECT 1 AS one FROM stories \
          WHERE stories.short_id = ?";
         let log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
@@ -43,7 +43,7 @@ where
     }
 
     // TODO: check for similar stories if there's a url
-    // SELECT  stories.*
+    // SELECT stories.*
     // FROM stories
     // WHERE stories.url IN (
     //  'https://google.com/test',
@@ -130,7 +130,7 @@ where
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);
-        let select_keystore = "SELECT  keystores.* \
+        let select_keystore = "SELECT keystores.* \
          FROM keystores \
          WHERE keystores.keyX = ?";
         log_query = select_keystore.replace("?", &key);
@@ -142,7 +142,7 @@ where
             )
             .await?;
 
-        let select_votes = "SELECT  votes.* FROM votes \
+        let select_votes = "SELECT votes.* FROM votes \
          WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id IS NULL";

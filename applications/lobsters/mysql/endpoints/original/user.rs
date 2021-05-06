@@ -12,7 +12,7 @@ where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
     let c = c.await?;
-    let select_users = "SELECT  users.* FROM users \
+    let select_users = "SELECT users.* FROM users \
      WHERE users.PII_username = ?";
     let mut log_query = select_users.replace("?", &format!("'{}'", uid));
     println!("{}", log_query);
@@ -25,7 +25,7 @@ where
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
 
     // most popular tag
-    let select_tags = "SELECT  tags.id, count(*) AS `count` FROM tags \
+    let select_tags = "SELECT tags.id, count(*) AS `count` FROM tags \
      INNER JOIN taggings ON taggings.tag_id = tags.id \
      INNER JOIN stories ON stories.id = taggings.story_id \
      WHERE tags.inactive = 0 \
@@ -41,7 +41,7 @@ where
         )
         .await?;
 
-    let select_keystore = "SELECT  keystores.* \
+    let select_keystore = "SELECT keystores.* \
      FROM keystores \
      WHERE keystores.keyX = ?";
     log_query = select_keystore.replace("?", &format!("'user:{}:stories_submitted'", uid));
@@ -62,13 +62,13 @@ where
         )
         .await?;
 
-    let select_hats = "SELECT  1 AS `one` FROM hats \
+    let select_hats = "SELECT 1 AS `one` FROM hats \
      WHERE hats.OWNER_user_id = ? LIMIT 1";
     log_query = select_hats.replace("?", &uid.to_string());
     println!("{}", log_query);
     c = c
         .drop_exec(
-            "SELECT  1 AS `one` FROM hats \
+            "SELECT 1 AS `one` FROM hats \
              WHERE hats.OWNER_user_id = ? LIMIT 1",
             (uid,),
         )

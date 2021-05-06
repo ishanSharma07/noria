@@ -45,7 +45,7 @@ where
     if let Some(uid) = acting_as {
         // keep track of when the user last saw this story
         // NOTE: *technically* the update only happens at the end...
-        let select_ribbon = "SELECT  read_ribbons.* \
+        let select_ribbon = "SELECT read_ribbons.* \
              FROM read_ribbons \
              WHERE read_ribbons.user_id = ? \
              AND read_ribbons.story_id = ?";

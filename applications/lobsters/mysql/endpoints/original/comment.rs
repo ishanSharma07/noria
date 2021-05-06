@@ -82,7 +82,7 @@ where
     // parent to ensure we don't double-post accidentally
 
     if !priming {
-        let select_one = "SELECT  1 AS `one` FROM comments \
+        let select_one = "SELECT 1 AS `one` FROM comments \
          WHERE comments.short_id = ?";
         log_query = select_one.replace("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
@@ -178,7 +178,7 @@ where
 
     if !priming {
         // but why?!
-        let select_votes = "SELECT  votes.* FROM votes \
+        let select_votes = "SELECT votes.* FROM votes \
          WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id = ?";

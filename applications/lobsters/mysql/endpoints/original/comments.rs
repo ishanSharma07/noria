@@ -13,7 +13,7 @@ where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
     let c = c.await?;
-    let select_comments = "SELECT  comments.* \
+    let select_comments = "SELECT comments.* \
      FROM comments \
      WHERE comments.is_deleted = 0 \
      AND comments.is_moderated = 0 \
@@ -78,7 +78,7 @@ where
         .join(",");
 
     let select_stories = &format!(
-        "SELECT  stories.* FROM stories \
+        "SELECT stories.* FROM stories \
          WHERE stories.id IN ({})",
         stories
     );
@@ -129,7 +129,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_usersv2 = &format!(
-            "SELECT  users.* FROM users \
+            "SELECT users.* FROM users \
              WHERE users.id IN ({})",
             authors
         );

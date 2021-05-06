@@ -32,7 +32,7 @@ where
     let upvotes = comment.get::<i32, _>("upvotes").unwrap();
     let downvotes = comment.get::<i32, _>("downvotes").unwrap();
     let comment = comment.get::<u32, _>("id").unwrap();
-    let select_votes = "SELECT  votes.* \
+    let select_votes = "SELECT votes.* \
      FROM votes \
      WHERE votes.OWNER_user_id = ? \
      AND votes.story_id = ? \
