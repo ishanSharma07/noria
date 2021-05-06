@@ -145,6 +145,8 @@ if __name__=="__main__":
     # Transform queries and flush to file
     out_file = open("transformed_trace.sql", "w")
     for trace in traces:
+        if trace.startswith("#"):
+            break
         if trace == "" or trace.startswith("--") or trace.startswith("INSERT") or trace.startswith("REPLACE") or trace.startswith("UPDATE"):
             out_file.write(trace + "\n")
             continue
