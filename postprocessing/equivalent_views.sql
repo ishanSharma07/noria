@@ -59,7 +59,7 @@ CREATE VIEW q29 AS '"SELECT tags.* FROM tags WHERE tags.id = ?"';
 --needs the big matview
 --CREATE VIEW q29 AS '"SELECT replying_comments_for_count.user_id, count(*) AS notifications FROM replying_comments_for_count WHERE replying_comments_for_count.user_id = ?"';
 CREATE VIEW q30 AS '"SELECT comments.* FROM comments WHERE comments.is_deleted = 0 AND comments.is_moderated = 0 ORDER BY id DESC LIMIT 40"';
-CREATE VIEW q31 AS '"SELECT 1 FROM hidden_stories WHERE user_id = ? AND hidden_stories.story_id = ?"';
+CREATE VIEW q31 AS '"SELECT 1 FROM hidden_stories WHERE hidden_stories.user_id = ? AND hidden_stories.story_id = ?"';
 CREATE VIEW q32 AS '"SELECT stories.* FROM stories WHERE stories.id = ?"';
 CREATE VIEW q33 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q34 AS '"SELECT comments.* FROM comments WHERE comments.short_id = ?"';

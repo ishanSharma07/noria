@@ -43,7 +43,7 @@ where
             .collect();
         let select_one = &format!(
                 "SELECT 1 FROM hidden_stories \
-                 WHERE user_id = ? \
+                 WHERE hidden_stories.user_id = ? \
                  AND hidden_stories.story_id IN ({})",
             params
         );
