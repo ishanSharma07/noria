@@ -75,6 +75,8 @@ def build_where_clause(view_constraints, query_constraints):
         else:
             left_expression = view_constraints_subset[i][:-1]
             value = re.split(left_expression, query_constraints_subset[i])[1]
+        # Remove old table name, Ex users.id
+        left_expression = re.split('\.', left_expression)[1]
         where_clause = where_clause + left_expression
         where_clause = where_clause + value
         where_clause = where_clause + " AND "
