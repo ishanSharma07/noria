@@ -14,15 +14,15 @@ where
     let c = c.await?;
     let select_users = "SELECT  users.* FROM users \
      WHERE users.PII_username = ?";
-    let mut log_query = select_users.replace("?", &format!("'user{}'", uid));
+    let mut log_query = select_users.replace("?", &format!("'{}'", uid));
     println!("{}", log_query);
     let (mut c, user) = c
         .first_exec::<_, _, my::Row>(
             select_users,
-            (format!("user{}", uid),),
+            (format!("'{}'", uid),),
         )
         .await?;
-    let uid = user.unwrap().get::<u32, _>("id").unwrap();
+    let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
 
     // most popular tag
     let select_tags = "SELECT  tags.id, count(*) AS `count` FROM tags \
