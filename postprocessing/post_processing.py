@@ -143,8 +143,9 @@ if __name__=="__main__":
     out_file = open("transformed_trace.sql", "w")
     for trace in traces:
         if trace == "" or trace.startswith("--") or trace.startswith("INSERT") or trace.startswith("REPLACE") or trace.startswith("UPDATE"):
+            out_file.write(trace + "\n")
             continue
         tq = transform_query(index, trace)
-        print(tq)
+        #print(tq)
         out_file.write(tq + "\n")
     out_file.close()
