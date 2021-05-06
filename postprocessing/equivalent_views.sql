@@ -63,4 +63,4 @@ CREATE VIEW q31 AS '"SELECT 1 FROM hidden_stories WHERE user_id = ? AND hidden_s
 CREATE VIEW q32 AS '"SELECT stories.* FROM stories WHERE stories.id = ?"';
 CREATE VIEW q33 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q34 AS '"SELECT comments.* FROM comments WHERE comments.short_id = ?"';
-CREATE VIEW q35 AS '"SELECT stories.*, upvotes - downvotes AS saldo FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 ORDER BY id DESC LIMIT 51"';
+CREATE VIEW q35 AS '"SELECT stories.* FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 AND stories.upvotes - stories.downvotes <= 5 ORDER BY id DESC LIMIT 51"';
