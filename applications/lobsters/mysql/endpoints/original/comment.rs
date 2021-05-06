@@ -132,7 +132,7 @@ where
          comment, upvotes, confidence, \
          markeddown_comment,\
          downvotes, is_deleted, is_moderated, is_from_email, hat_id) \
-         VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, '{}', {}, '{}', '{}', 0, 0, 0, 0, NULL)",
+         VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, '{}', {}, {}, '{}', 0, 0, 0, 0, NULL)",
          comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user, parent,
          thread.map(|x| x.to_string()).unwrap_or("NULL".to_string()), "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
         println!("{}", log_query);
@@ -166,7 +166,7 @@ where
          comment, upvotes, confidence, \
          markeddown_comment,\
          downvotes, is_deleted, is_moderated, is_from_email, hat_id) \
-         VALUES ({}, '{}', '{}', '{}', {}, {}, NULL, NULL, '{}', {}, '{}', '{}', 0, 0, 0, 0, NULL)",
+         VALUES ({}, '{}', '{}', '{}', {}, {}, NULL, NULL, '{}', {}, {}, '{}', 0, 0, 0, 0, NULL)",
          comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user,
          "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
         println!("{}", log_query);
