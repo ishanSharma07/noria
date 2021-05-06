@@ -18,7 +18,7 @@ where
      WHERE comments.is_deleted = 0 \
      AND comments.is_moderated = 0 \
      ORDER BY id DESC \
-     LIMIT 40 OFFSET 0";
+     LIMIT 40";
     println!("{}", select_comments);
     let comments = c
         .query(select_comments)
@@ -140,4 +140,3 @@ where
 
     Ok((c, true))
 }
-

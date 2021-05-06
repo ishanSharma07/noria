@@ -109,11 +109,11 @@ where
         )
         .await?;
 
-    let select_comments = "SELECT comments.* \
+    let select_comments = "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
      FROM comments \
      WHERE comments.story_id = ? \
      ORDER BY \
-     (CAST(upvotes AS signed) - CAST(downvotes AS signed)) < 0 ASC, \
+     saldo ASC, \
      confidence DESC";
     log_query = select_comments
     .replace("?", &story.to_string());

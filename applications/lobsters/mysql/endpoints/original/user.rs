@@ -25,13 +25,13 @@ where
     let uid = user.unwrap().get::<u32, _>("id").unwrap();
 
     // most popular tag
-    let select_tags = "SELECT  tags.* FROM tags \
+    let select_tags = "SELECT  tags.id, count(*) AS `count` FROM tags \
      INNER JOIN taggings ON taggings.tag_id = tags.id \
      INNER JOIN stories ON stories.id = taggings.story_id \
      WHERE tags.inactive = 0 \
      AND stories.user_id = ? \
      GROUP BY tags.id \
-     ORDER BY COUNT(*) desc LIMIT 1";
+     ORDER BY `count` DESC LIMIT 1";
     log_query = select_tags.replace("?", &uid.to_string());
     println!("{}", log_query);
     c = c

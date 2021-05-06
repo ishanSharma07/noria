@@ -29,8 +29,8 @@ where
     let comment = comment.unwrap();
     let author = comment.get::<u32, _>("user_id").unwrap();
     let sid = comment.get::<u32, _>("story_id").unwrap();
-    let upvotes = comment.get::<u32, _>("upvotes").unwrap();
-    let downvotes = comment.get::<u32, _>("downvotes").unwrap();
+    let upvotes = comment.get::<i32, _>("upvotes").unwrap();
+    let downvotes = comment.get::<i32, _>("downvotes").unwrap();
     let comment = comment.get::<u32, _>("id").unwrap();
     let select_votes = "SELECT  votes.* \
      FROM votes \
@@ -166,9 +166,9 @@ where
      comments.upvotes, \
      comments.downvotes \
      FROM comments \
-     JOIN stories ON (stories.id = comments.story_id) \
+     JOIN stories ON stories.id = comments.story_id \
      WHERE comments.story_id = ? \
-     AND comments.user_id <> stories.user_id";
+     AND comments.user_id != stories.user_id";
      log_query = select_commentsv2
        .replace("?", &sid.to_string());
      println!("{}", log_query);
