@@ -84,6 +84,19 @@ def build_where_clause(view_constraints, query_constraints):
     where_clause  = where_clause[:-4]
     return where_clause
 
+def get_projection(conditions):
+    projection = ""
+    for condition in conditions:
+        if "?" in condition:
+            # Discard ` = ?`
+            column = condition[:-4].strip()
+            # Discard old column name
+            column = re.split('\.', column)[1]
+            projection = projection + ", " + column
+    # Discard initial ` ,`
+    projection = projection[2:]
+    return projection
+
 def transform_query(index, query):
     initial_chunk = re.findall(where_pattern, query)[0]
     subseq_chunk = re.split(where_pattern, query)[1]
@@ -98,11 +111,13 @@ def transform_query(index, query):
         for key, view_name in sub_map.items():
             if contains_variable_constraint(key.split("&")) == False:
                 # View definition does not have any `?`
-                final_query = "SELECT * FROM " + view_name;
+                projection = get_projection(key.split("&"))
+                final_query = "SELECT " + projection + " FROM " + view_name;
                 return final_query
             if semantically_equal(key.split("&"), query_constraints):
+                projection = get_projection(key.split("&"))
                 where_clause = build_where_clause(key.split("&"), query_constraints)
-                final_query = "SELECT * FROM " + view_name + " " + where_clause
+                final_query = "SELECT " + projection + " FROM " + view_name + " " + where_clause
                 return final_query
     # If reached here it implies that there was no match
     exit("ERROR: Did not find match for query in the trace file. Query: " + query)
