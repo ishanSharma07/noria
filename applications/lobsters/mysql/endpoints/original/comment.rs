@@ -82,7 +82,7 @@ where
     // parent to ensure we don't double-post accidentally
 
     if !priming {
-        let select_one = "SELECT 1 AS `one` FROM comments \
+        let select_one = "SELECT 1 AS `one`, short_id FROM comments \
          WHERE comments.short_id = ?";
         log_query = select_one.replace("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
         println!("{}", log_query);
