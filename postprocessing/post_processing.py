@@ -98,10 +98,13 @@ def get_projection(conditions):
     return projection
 
 def transform_query(index, query):
-    initial_chunk = re.findall(where_pattern, query)[0]
+    chunks = re.findall(where_pattern, query)
+    if len(chunks) < 1:
+        exit("ERROR: could not match query: {}".format(query))
+    initial_chunk = chunks[0]
     subseq_chunk = re.split(where_pattern, query)[1]
     if not initial_chunk in index:
-        exit("ERROR: unknown query stem {}\n\nQuery was: {}\n\nKnown stems: {}".format(
+        exit("ERROR: unknown query stem {}\n\nQuery: {}\n\nKnown stems: {}".format(
              initial_chunk, query, index.keys()))
     sub_map = index[initial_chunk]
     query_constraints = re.findall(predef_condition_pttern, subseq_chunk)
@@ -112,12 +115,12 @@ def transform_query(index, query):
             if contains_variable_constraint(key.split("&")) == False:
                 # View definition does not have any `?`
                 projection = get_projection(key.split("&"))
-                final_query = "SELECT " + projection + " FROM " + view_name;
+                final_query = "SELECT * FROM " + view_name;
                 return final_query
             if semantically_equal(key.split("&"), query_constraints):
                 projection = get_projection(key.split("&"))
                 where_clause = build_where_clause(key.split("&"), query_constraints)
-                final_query = "SELECT " + projection + " FROM " + view_name + " " + where_clause
+                final_query = "SELECT * FROM " + view_name + " " + where_clause
                 return final_query
     # If reached here it implies that there was no match
     exit("ERROR: Did not find match for query in the trace file. Query: " + query)
