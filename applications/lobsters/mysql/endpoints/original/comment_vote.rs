@@ -166,7 +166,7 @@ where
      comments.upvotes, \
      comments.downvotes \
      FROM comments \
-     JOIN stories ON stories.id = comments.story_id \
+     JOIN stories ON comments.story_id = stories.id \
      WHERE comments.story_id = ? \
      AND comments.user_id != stories.user_id";
      log_query = select_commentsv2

@@ -48,7 +48,7 @@ CREATE VIEW q18 AS '"SELECT hidden_stories.story_id FROM hidden_stories WHERE hi
 CREATE VIEW q19 AS '"SELECT users.id, users.* FROM users WHERE users.PII_username = ?"';
 CREATE VIEW q20 AS '"SELECT hidden_stories.* FROM hidden_stories WHERE hidden_stories.user_id = ? AND hidden_stories.story_id = ?"';
 CREATE VIEW q21 AS '"SELECT tag_filters.* FROM tag_filters WHERE tag_filters.user_id = ?"';
-CREATE VIEW q22 AS '"SELECT tags.id, count(*) AS `count` FROM tags INNER JOIN taggings ON taggings.tag_id = tags.id INNER JOIN stories ON stories.id = taggings.story_id WHERE tags.inactive = 0 AND stories.user_id = ? GROUP BY tags.id ORDER BY `count` DESC LIMIT 1"';
+CREATE VIEW q22 AS '"SELECT tags.id, count(*) AS `count` FROM tags INNER JOIN taggings ON tags.id = taggings.tag_id INNER JOIN stories ON taggings.story_id = stories.id WHERE tags.inactive = 0 AND stories.user_id = ? GROUP BY tags.id ORDER BY `count` DESC LIMIT 1"';
 CREATE VIEW q23 AS '"SELECT taggings.story_id FROM taggings WHERE taggings.story_id = ?"';
 CREATE VIEW q24 AS '"SELECT saved_stories.* FROM saved_stories WHERE saved_stories.user_id = ? AND saved_stories.story_id = ?"';
 CREATE VIEW q25 AS '"SELECT suggested_titles.* FROM suggested_titles WHERE suggested_titles.story_id = ?"';
