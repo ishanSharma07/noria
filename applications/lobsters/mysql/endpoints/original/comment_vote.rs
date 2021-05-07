@@ -12,14 +12,13 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: comment_vote");
+    let mut log_query = String::from("--start: comment_vote");
     let c = c.await?;
     let user = acting_as.unwrap();
     let select_comments = "SELECT comments.* \
      FROM comments \
      WHERE comments.short_id = ?";
-    let mut log_query = select_comments.replace("?", &format!("'{}'", ::std::str::from_utf8(&comment[..]).unwrap()));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_comments.replace("?", &format!("'{}'", ::std::str::from_utf8(&comment[..]).unwrap()))));
     let (mut c, comment) = c
         .first_exec::<_, _, my::Row>(
             select_comments,
@@ -38,11 +37,11 @@ where
      WHERE votes.OWNER_user_id = ? \
      AND votes.story_id = ? \
      AND votes.comment_id = ?";
-    log_query = select_votes
+    let mut lq = select_votes
     .replacen("?", &user.to_string(), 1)
     .replacen("?", &sid.to_string(), 1)
     .replacen("?", &comment.to_string(), 1);
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             select_votes,
@@ -74,7 +73,7 @@ where
         )
         .await?;
     let vote_insert_id = q.last_insert_id().unwrap();
-    log_query = format!("INSERT INTO votes \
+    let ilq = format!("INSERT INTO votes \
      (id, OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, sid,
@@ -82,7 +81,7 @@ where
          Vote::Up => "1",
          Vote::Down => "0",
      });
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", ilq));
 
     let mut c = q.drop_result().await?;
 
@@ -95,8 +94,7 @@ where
             Vote::Down => "- 1",
         }
     );
-    log_query = update_users.replace("?", &author.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", update_users.replace("?", &author.to_string())));
     c = c
         .drop_exec(
             update_users,
@@ -122,10 +120,10 @@ where
             Vote::Down => "+ 1",
         },
     );
-    log_query = update_comments
+    let mut lq = update_comments
      .replacen("?", &confidence.to_string(), 1)
      .replacen("?", &comment.to_string(), 1);
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             update_comments,
@@ -137,9 +135,9 @@ where
     let select_stories = "SELECT stories.* \
      FROM stories \
      WHERE stories.id = ?";
-    log_query = select_stories
-      .replace("?", &sid.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_stories
+      .replace("?", &sid.to_string())));
+
     let (mut c, story) = c
         .first_exec::<_, _, my::Row>(
             select_stories,
@@ -153,9 +151,8 @@ where
      FROM tags \
      INNER JOIN taggings ON tags.id = taggings.tag_id \
      WHERE taggings.story_id = ?";
-     log_query = select_tags
-       .replace("?", &sid.to_string());
-     println!("{}", log_query);
+     log_query.push_str(&format!("\n{}", select_tags.replace("?", &sid.to_string())));
+
     c = c
         .drop_exec(
             select_tags,
@@ -170,9 +167,7 @@ where
      JOIN stories ON comments.story_id = stories.id \
      WHERE comments.story_id = ? \
      AND comments.user_id != stories.user_id";
-     log_query = select_commentsv2
-       .replace("?", &sid.to_string());
-     println!("{}", log_query);
+     log_query.push_str(&format!("\n{}", select_commentsv2.replace("?", &sid.to_string())));
     c = c
         .drop_exec(
             select_commentsv2,
@@ -183,9 +178,7 @@ where
     let select_storiesv2 = "SELECT stories.id \
      FROM stories \
      WHERE stories.merged_story_id = ?";
-    log_query = select_storiesv2
-       .replace("?", &sid.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_storiesv2.replace("?", &sid.to_string())));
     c = c
         .drop_exec(
             select_storiesv2,
@@ -213,14 +206,14 @@ where
             Vote::Down => "+ 1",
         },
     );
-    log_query = udpate_stories
-       .replace("?", &(score
+    let mut lq = udpate_stories
+       .replacen("?", &(score
            - match v {
                Vote::Up => 1,
                Vote::Down => -1,
-           }).to_string())
-       .replace("?", &sid.to_string());
-    println!("{}", log_query);
+           }).to_string(), 1)
+       .replacen("?", &sid.to_string(), 1);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             udpate_stories,
@@ -235,7 +228,7 @@ where
         )
         .await?;
 
-    println!("--end: comment_vote");
-
+    log_query.push_str("\n--end: comment_vote");
+    println!("{}", log_query);
     Ok((c, false))
 }
