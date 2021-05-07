@@ -237,7 +237,7 @@ where
             .await?;
     }
 
-    log_query.push_str("\n--end: comment");
+    log_query.push_str("\n--end: frontpage");
     println!("{}", log_query);
     Ok((c, true))
 }
