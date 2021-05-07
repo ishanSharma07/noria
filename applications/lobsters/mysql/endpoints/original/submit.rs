@@ -14,14 +14,14 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: submit");
+    let mut log_query = format!("--start: submit");
     let c = c.await?;
     let user = acting_as.unwrap();
 
     // check that tags are active
     let select_tags = "SELECT tags.* FROM tags \
      WHERE tags.inactive = 0 AND tags.tag IN ('test')";
-    println!("{}", select_tags);
+    log_query.push_str(&format!("\n{}", select_tags));
     let (mut c, tag) = c
         .first::<_, my::Row>(
             select_tags,
@@ -33,8 +33,8 @@ where
         // check that story id isn't already assigned
         let select_stories = "SELECT 1 AS `one` FROM stories \
          WHERE stories.short_id = ?";
-        let log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
-        println!("{}", log_query);
+        let lq = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_stories,
@@ -86,7 +86,7 @@ where
         )
         .await?;
     let story = q.last_insert_id().unwrap();
-    let log_query = format!("INSERT INTO stories \
+    let lq = format!("INSERT INTO stories \
      (id, created_at, user_id, title, \
      description, short_id, upvotes, hotness, \
      markeddown_description,\
@@ -96,7 +96,7 @@ where
      story, &(chrono::Local::now().naive_local()).to_string(), user, title,
      "to infinity", ::std::str::from_utf8(&id[..]).unwrap(), 1, 19217,
      "<p>to infinity</p>\\n");
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
 
     let mut c = q.drop_result().await?;
 
@@ -110,18 +110,18 @@ where
         .await?;
 
     let id = c.last_insert_id().unwrap();
-    let mut log_query = format!("INSERT INTO taggings (id, story_id, tag_id) \
+    let lq = format!("INSERT INTO taggings (id, story_id, tag_id) \
      VALUES ({}, {}, {})", id, story, tag.unwrap());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
 
     let key = format!("user:{}:stories_submitted", user);
     let insert_keystore = "REPLACE INTO keystores (keyX, valueX) \
      VALUES (?, ?)"; // \
 //     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
-    log_query = insert_keystore
+    let lq = insert_keystore
     .replacen("?", &format!("'{}'", key), 1)
     .replacen("?", "1", 1);
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             insert_keystore,
@@ -134,8 +134,8 @@ where
         let select_keystore = "SELECT keystores.* \
          FROM keystores \
          WHERE keystores.keyX = ?";
-        log_query = select_keystore.replace("?", &format!("'{}'", key));
-        println!("{}", log_query);
+        let lq = select_keystore.replace("?", &format!("'{}'", key));
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_keystore,
@@ -147,10 +147,10 @@ where
          WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id IS NULL";
-        log_query = select_votes
+        let lq = select_votes
         .replacen("?", &user.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_votes,
@@ -169,11 +169,11 @@ where
         )
         .await?;
     let vote_insert_id = c.last_insert_id().unwrap();
-    log_query = format!("INSERT INTO votes \
+    let lq = format!("INSERT INTO votes \
      (id, OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, NULL, {}, NULL)", vote_insert_id, user, story, 1);
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
 
     if !priming {
         let select_comments = "SELECT \
@@ -183,8 +183,8 @@ where
          JOIN stories ON comments.story_id = stories.id \
          WHERE comments.story_id = ? \
          AND comments.user_id != stories.user_id";
-        log_query = select_comments.replace("?", &story.to_string());
-        println!("{}", log_query);
+        let lq = select_comments.replace("?", &story.to_string());
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_comments,
@@ -196,10 +196,10 @@ where
         let update_hotness = "UPDATE stories \
          SET hotness = ? \
          WHERE stories.id = ?";
-        log_query = update_hotness
+        let lq = update_hotness
         .replacen("?", "19217", 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 update_hotness,
@@ -208,7 +208,8 @@ where
             .await?;
     }
 
-    println!("--end: submit");
+    log_query.push_str("\n--end: submit");
+    println!("{}", log_query);
 
     Ok((c, false))
 }
