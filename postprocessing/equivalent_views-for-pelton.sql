@@ -33,7 +33,7 @@ CREATE VIEW q4 AS '"SELECT keystores.* FROM keystores WHERE keystores.keyX = ?"'
 CREATE VIEW q5 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id IS NULL"';
 CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON comments.story_id = stories.id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
 CREATE VIEW q7 AS '"SELECT stories.* FROM stories WHERE stories.short_id = ?"';
-CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.id = ?"';
+CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.PII_username = ?"';
 CREATE VIEW q9 AS '"SELECT 1 AS `one`, short_id FROM comments WHERE comments.short_id = ?"';
 CREATE VIEW q10 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q11 AS '"SELECT stories.id FROM stories WHERE stories.merged_story_id = ?"';
@@ -64,3 +64,4 @@ CREATE VIEW q34 AS '"SELECT comments.* FROM comments WHERE comments.short_id = ?
 CREATE VIEW q35 AS '"SELECT stories.* FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 AND stories.upvotes - stories.downvotes <= 5 ORDER BY id DESC LIMIT 51"';
 --needs the big matview
 CREATE VIEW q36 AS '"SELECT COUNT(*) FROM replying_comments_for_count WHERE replying_comments_for_count.user_id = ?"';
+CREATE VIEW q37 AS '"SELECT users.* FROM users WHERE users.id = ?"';
