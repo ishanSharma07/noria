@@ -15,14 +15,13 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: comment");
+    let mut log_query = String::from("--start: comment");
     let c = c.await?;
     let user = acting_as.unwrap();
     let select_stories = "SELECT stories.* \
      FROM stories \
      WHERE stories.short_id = ?";
-    let mut log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&story[..]).unwrap()));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&story[..]).unwrap()))));
     let (mut c, story) = c
         .first_exec::<_, _, my::Row>(
             select_stories,
@@ -36,8 +35,7 @@ where
 
     if !priming {
         let select_users = "SELECT users.* FROM users WHERE users.id = ?";
-        log_query = select_users.replace("?", &author.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", select_users.replace("?", &author.to_string())));
         c = c
             .drop_exec(
                 select_users,
@@ -51,9 +49,9 @@ where
         let select_comments = "SELECT comments.* FROM comments \
          WHERE comments.story_id = ? \
          AND comments.short_id = ?";
-        log_query = select_comments.replacen("?", &story.to_string(), 1);
-        log_query = log_query.replacen("?", &format!("'{}'", ::std::str::from_utf8(&parent[..]).unwrap()), 1);
-        println!("{}", log_query);
+        let mut lq = select_comments.replacen("?", &story.to_string(), 1);
+        lq = lq.replacen("?", &format!("'{}'", ::std::str::from_utf8(&parent[..]).unwrap()), 1);
+        log_query.push_str(&format!("\n{}", lq));
         let (x, p) = c
             .first_exec::<_, _, my::Row>(
                 select_comments,
@@ -85,8 +83,7 @@ where
     if !priming {
         let select_one = "SELECT 1 AS `one`, short_id FROM comments \
          WHERE comments.short_id = ?";
-        log_query = select_one.replace("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", select_one.replace("?", &format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()))));
         // check that short id is available
         c = c
             .drop_exec(
@@ -127,7 +124,7 @@ where
         )
         .await?;
         let comment_id = r.last_insert_id().unwrap();
-        log_query = format!("INSERT INTO comments \
+        let lq = format!("INSERT INTO comments \
          (id, created_at, updated_at, short_id, story_id, \
          user_id, parent_comment_id, thread_id, \
          comment, upvotes, confidence, \
@@ -136,7 +133,7 @@ where
          VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, '{}', {}, {}, '{}', 0, 0, 0, 0, NULL)",
          comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user, parent,
          thread.map(|x| x.to_string()).unwrap_or("NULL".to_string()), "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         r
     } else {
         let insert_comments = "INSERT INTO comments \
@@ -161,7 +158,7 @@ where
         )
         .await?;
         let comment_id = r.last_insert_id().unwrap();
-        log_query = format!("INSERT INTO comments \
+        let lq = format!("INSERT INTO comments \
          (id, created_at, updated_at, short_id, story_id, \
          user_id, parent_comment_id, thread_id, \
          comment, upvotes, confidence, \
@@ -170,7 +167,7 @@ where
          VALUES ({}, '{}', '{}', '{}', {}, {}, NULL, NULL, '{}', {}, {}, '{}', 0, 0, 0, 0, NULL)",
          comment_id, now, now, ::std::str::from_utf8(&id[..]).unwrap(), story, user,
          "moar benchmarking", 1, 1, "<p>moar benchmarking</p>");
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         r
 
     };
@@ -183,10 +180,10 @@ where
          WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id = ?";
-        log_query = select_votes.replacen("?", &user.to_string(), 1);
-        log_query = log_query.replacen("?", &story.to_string(), 1);
-        log_query = log_query.replacen("?", &comment.to_string(), 1);
-        println!("{}", log_query);
+        let mut lq = select_votes.replacen("?", &user.to_string(), 1);
+        lq = lq.replacen("?", &story.to_string(), 1);
+        lq = lq.replacen("?", &comment.to_string(), 1);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_votes,
@@ -205,18 +202,18 @@ where
         )
         .await?;
     let vote_insert_id = c.last_insert_id().unwrap();
-    log_query = format!("INSERT INTO votes \
+    let lq = format!("INSERT INTO votes \
      (id, OWNER_user_id, story_id, comment_id, vote, reason) \
      VALUES \
      ({}, {}, {}, {}, {}, NULL)", vote_insert_id, user, story,
      comment, 1);
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
 
     let select_storiesv2 = "SELECT stories.id \
      FROM stories \
      WHERE stories.merged_story_id = ?";
-    log_query = select_storiesv2.replace("?", &story.to_string());
-    println!("{}", log_query);
+    let lq = select_storiesv2.replace("?", &story.to_string());
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             select_storiesv2,
@@ -230,8 +227,7 @@ where
      ORDER BY \
      (upvotes - downvotes) < 0 ASC, \
      confidence DESC";
-    log_query = select_commentsv2.replace("?", &story.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_commentsv2.replace("?", &story.to_string())));
     // why are these ordered?
     let (mut c, count) = c
         .prep_exec(
@@ -243,9 +239,9 @@ where
         .await?;
 
     let udpate_stories = "UPDATE stories SET comments_count = ? WHERE stories.id = ?";
-    log_query = udpate_stories.replacen("?", &count.to_string(), 1);
-    log_query = log_query.replacen("?", &story.to_string(), 1);
-    println!("{}", log_query);
+    let mut lq = udpate_stories.replacen("?", &count.to_string(), 1);
+    lq = lq.replacen("?", &story.to_string(), 1);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             udpate_stories,
@@ -260,8 +256,7 @@ where
          INNER JOIN taggings \
          ON tags.id = taggings.tag_id \
          WHERE taggings.story_id = ?";
-        log_query = select_tags.replace("?", &story.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", select_tags.replace("?", &story.to_string())));
         c = c
             .drop_exec(
                 select_tags,
@@ -275,8 +270,7 @@ where
          JOIN stories ON comments.story_id = stories.id \
          WHERE comments.story_id = ? \
          AND comments.user_id != stories.user_id";
-        log_query = select_commentsv3.replace("?", &story.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", select_commentsv3.replace("?", &story.to_string())));
         c = c
             .drop_exec(
                 select_commentsv3,
@@ -286,8 +280,7 @@ where
         let select_storiesv3 = "SELECT stories.id \
          FROM stories \
          WHERE stories.merged_story_id = ?";
-        log_query = select_storiesv3.replace("?", &story.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", select_storiesv3.replace("?", &story.to_string())));
         c = c
             .drop_exec(
                 select_storiesv3,
@@ -300,9 +293,9 @@ where
     let update_stories = "UPDATE stories \
      SET hotness = ? \
      WHERE stories.id = ?";
-    log_query = update_stories.replacen("?", &(hotness - 1).to_string(), 1);
-    log_query = log_query.replacen("?", &story.to_string(), 1);
-    println!("{}", log_query);
+    let mut lq = update_stories.replacen("?", &(hotness - 1).to_string(), 1);
+    lq = lq.replacen("?", &story.to_string(), 1);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             update_stories,
@@ -314,9 +307,9 @@ where
     let insert_keystore = "REPLACE INTO keystores (keyX, valueX) \
      VALUES (?, ?)"; // \
 //     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
-    log_query = insert_keystore.replacen("?", &format!("'{}'", key), 1);
-    log_query = log_query.replacen("?", "1", 1);
-    println!("{}", log_query);
+    let mut lq = insert_keystore.replacen("?", &format!("'{}'", key), 1);
+    lq = lq.replacen("?", "1", 1);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             insert_keystore,
@@ -324,7 +317,8 @@ where
         )
         .await?;
 
-    println!("--end: comment");
+    log_query.push_str("\n--end: comment");
+    println!("{}", log_query);
 
     Ok((c, false))
 }

@@ -18,7 +18,6 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
              GROUP BY replying_comments_for_count.user_id \
              ";
     let mut log_query = select_count.replace("?", &uid.to_string());
-    println!("{}", log_query);
     c = c
         .drop_exec(
             select_count,
@@ -29,7 +28,7 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
     let select_keystore = "SELECT keystores.* \
      FROM keystores \
      WHERE keystores.keyX = ?";
-    log_query = select_keystore.replace("?", &format!("'user:{}:unread_messages'", uid));
+    log_query.push_str(&format!("\n{}", select_keystore.replace("?", &format!("'user:{}:unread_messages'", uid))));
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -38,5 +37,6 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
         )
         .await?;
 
+    println!("{}", log_query);
     Ok(c)
 }

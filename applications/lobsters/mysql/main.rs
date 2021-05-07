@@ -209,11 +209,10 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     LobstersRequest::Login => {
                         let c = c.await?;
                         let select_query = "SELECT 1 AS `one` FROM users WHERE users.PII_username = '?'";
-                        let log_select = select_query.replace("?", &acting_as.unwrap().to_string());
-                        println!("{}", log_select);
+                        let mut log_query = select_query.replace("?", &acting_as.unwrap().to_string());
                         let (mut c, user) = c
                             .first_exec::<_, _, my::Row>(
-                                log_select,
+                                log_query.clone(),
                                 (),
                             )
                             .await?;
@@ -233,7 +232,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                             .replacen("?", &uid.to_string(), 1)
                             .replacen("?", &format!("'{}'", uid.to_string()), 1)
                             .replacen("?", &format!("'session_token_{}'", &uid.to_string()), 1);
-                            println!("{}", log_insert);
+                            log_query.push_str(&format!("\n{}", log_insert));
                             c = c
                                 .drop_exec(
                                     log_insert,
@@ -242,6 +241,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                                 .await?;
                         }
 
+                        println!("{}", log_query);
                         Ok((c, false))
                     }
                     LobstersRequest::Logout => Ok((c.await?, false)),
