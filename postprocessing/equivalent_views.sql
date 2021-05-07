@@ -33,7 +33,7 @@ CREATE VIEW q4 AS '"SELECT keystores.* FROM keystores WHERE keystores.keyX = ?"'
 CREATE VIEW q5 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id IS NULL"';
 CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON comments.story_id = stories.id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
 CREATE VIEW q7 AS '"SELECT stories.* FROM stories WHERE stories.short_id = ?"';
-CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.PII_username = ?"';
+CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.id = ?"';
 CREATE VIEW q9 AS '"SELECT 1 AS `one`, short_id FROM comments WHERE comments.short_id = ?"';
 CREATE VIEW q10 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q11 AS '"SELECT stories.id FROM stories WHERE stories.merged_story_id = ?"';
@@ -45,7 +45,7 @@ CREATE VIEW q15 AS '"SELECT read_ribbons.* FROM read_ribbons WHERE read_ribbons.
 CREATE VIEW q16 AS '"SELECT stories.* FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 AND stories.upvotes - stories.downvotes >= 0 ORDER BY hotness ASC LIMIT 51"';
 CREATE VIEW q17 AS '"SELECT votes.* FROM votes WHERE votes.comment_id = ?"';
 CREATE VIEW q18 AS '"SELECT hidden_stories.story_id FROM hidden_stories WHERE hidden_stories.user_id = ?"';
-CREATE VIEW q19 AS '"SELECT users.id, users.* FROM users WHERE users.PII_username = ?"';
+CREATE VIEW q19 AS '"SELECT users.* FROM users WHERE users.PII_username = ?"';
 CREATE VIEW q20 AS '"SELECT hidden_stories.* FROM hidden_stories WHERE hidden_stories.user_id = ? AND hidden_stories.story_id = ?"';
 CREATE VIEW q21 AS '"SELECT tag_filters.* FROM tag_filters WHERE tag_filters.user_id = ?"';
 CREATE VIEW q22 AS '"SELECT tags.id, count(*) AS `count` FROM tags INNER JOIN taggings ON tags.id = taggings.tag_id INNER JOIN stories ON taggings.story_id = stories.id WHERE tags.inactive = 0 AND stories.user_id = ? GROUP BY tags.id ORDER BY `count` DESC LIMIT 1"';
