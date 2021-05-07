@@ -206,7 +206,7 @@ where
             )
             .await?;
 
-        let values: Vec<_> = iter::once(&uid as &_)
+        let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &_))
             .collect();
         let select_hiddenv2 = &format!(
@@ -216,9 +216,13 @@ where
              AND hidden_stories.story_id IN ({})",
             story_params
         );
-        let log_query = select_hiddenv2
-           .replace("?", &values_str);
-        println!("{}", log_query);
+        let mut log_hiddenv2 = select_hiddenv2.clone();
+        // Replace first ? with acting_as uid
+        log_hiddenv2 = log_hiddenv2.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_hiddenv2 = log_hiddenv2.replacen("?", &values[i].to_string(), 1)
+        }
+        println!("{}", log_hiddenv2);
         c = c
             .drop_exec(
                 select_hiddenv2,
@@ -226,7 +230,7 @@ where
             )
             .await?;
 
-        let values: Vec<_> = iter::once(&uid as &_)
+        let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &_))
             .collect();
         let select_saved = &format!(
@@ -236,9 +240,13 @@ where
              AND saved_stories.story_id IN ({})",
             story_params
         );
-        let log_query = select_saved
-           .replace("?", &values_str);
-        println!("{}", log_query);
+        let mut log_saved = select_saved.clone();
+        // Replace first ? with acting_as uid
+        log_saved = log_saved.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_saved = log_saved.replacen("?", &values[i].to_string(), 1)
+        }
+        println!("{}", log_saved);
         c = c
             .drop_exec(
                 select_saved,
