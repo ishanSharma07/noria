@@ -11,13 +11,12 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: user");
+    let mut log_query = String::from("--start: user");
 
     let c = c.await?;
     let select_users = "SELECT users.* FROM users \
      WHERE users.PII_username = ?";
-    let mut log_query = select_users.replace("?", &format!("'{}'", uid));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_users.replace("?", &format!("'{}'", uid))));
     let (mut c, user) = c
         .first_exec::<_, _, my::Row>(
             select_users,
@@ -34,8 +33,7 @@ where
      AND stories.user_id = ? \
      GROUP BY tags.id \
      ORDER BY `count` DESC LIMIT 1";
-    log_query = select_tags.replace("?", &uid.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_tags.replace("?", &uid.to_string())));
     c = c
         .drop_exec(
             select_tags,
@@ -46,8 +44,8 @@ where
     let select_keystore = "SELECT keystores.* \
      FROM keystores \
      WHERE keystores.keyX = ?";
-    log_query = select_keystore.replace("?", &format!("'user:{}:stories_submitted'", uid));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_keystore.replace("?", &format!("'user:{}:stories_submitted'", uid))));
+
     c = c
         .drop_exec(
             select_keystore,
@@ -55,8 +53,8 @@ where
         )
         .await?;
 
-    log_query = select_keystore.replace("?", &format!("'user:{}:comments_posted'", uid));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_keystore.replace("?", &format!("'user:{}:comments_posted'", uid))));
+
     c = c
         .drop_exec(
             select_keystore,
@@ -66,7 +64,7 @@ where
 
     let select_hats = "SELECT 1 AS `one` FROM hats \
      WHERE hats.OWNER_user_id = ? LIMIT 1";
-    log_query = select_hats.replace("?", &uid.to_string());
+    log_query.push_str(&format!("\n{}", select_keystore.replace("?", &select_hats.replace("?", &uid.to_string()))));
     println!("{}", log_query);
     c = c
         .drop_exec(
@@ -76,7 +74,7 @@ where
         )
         .await?;
 
-    println!("--end: user");
+    log_query.push_str("\n--end: user");
 
     Ok((c, true))
 }
