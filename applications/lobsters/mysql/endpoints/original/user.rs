@@ -19,7 +19,7 @@ where
     let (mut c, user) = c
         .first_exec::<_, _, my::Row>(
             select_users,
-            (format!("'{}'", uid),),
+            (format!("{}", uid),),
         )
         .await?;
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
