@@ -13,14 +13,14 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: story");
+    let mut log_query = format!("--start: story");
     // XXX: at the end there are also a bunch of repeated, seemingly superfluous queries
     let c = c.await?;
     let select_stories = "SELECT stories.* \
      FROM stories \
      WHERE stories.short_id = ?";
-    let mut log_query = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
-    println!("{}", log_query);
+    let lq = select_stories.replace("?",&format!("'{}'", ::std::str::from_utf8(&id[..]).unwrap()));
+    log_query.push_str(&format!("\n{}", lq));
     let (mut c, mut story) = c
         .prep_exec(
             select_stories,
@@ -33,8 +33,7 @@ where
     let author = story.get::<u32, _>("user_id").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
     let select_users = "SELECT users.* FROM users WHERE users.id = ?";
-    log_query = select_users.replace("?", &author.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_users.replace("?", &author.to_string())));
     c = c
         .drop_exec(
             select_users,
@@ -50,10 +49,10 @@ where
              FROM read_ribbons \
              WHERE read_ribbons.user_id = ? \
              AND read_ribbons.story_id = ?";
-        log_query = select_ribbon
+        let lq = select_ribbon
         .replacen("?", &uid.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         let (x, rr) = c
             .first_exec::<_, _, my::Row>(
                 select_ribbon,
@@ -72,21 +71,21 @@ where
                 )
                 .await?;
                 let id = r.last_insert_id().unwrap();
-                log_query = format!("INSERT INTO read_ribbons \
+                let lq = format!("INSERT INTO read_ribbons \
                      (id, created_at, updated_at, user_id, story_id, is_following) \
                      VALUES ({}, '{}', '{}', {}, {}, 1)",
                      id, now, now, uid, story);
-                println!("{}", log_query);
+                log_query.push_str(&format!("\n{}", lq));
                 r
             }
             Some(rr) => {
                 let update_ribbon = "UPDATE read_ribbons \
                      SET read_ribbons.updated_at = ? \
                      WHERE read_ribbons.id = ?";
-                log_query = update_ribbon
+                let lq = update_ribbon
                 .replacen("?", &format!("'{}'", &now.to_string()), 1)
                 .replacen("?", &(rr.get::<u32, _>("id").unwrap()).to_string(), 1);
-                println!("{}", log_query);
+                log_query.push_str(&format!("\n{}", lq));
                 x.drop_exec(
                     update_ribbon,
                     (now, rr.get::<u32, _>("id").unwrap()),
@@ -100,9 +99,9 @@ where
     let select_stories = "SELECT stories.id \
      FROM stories \
      WHERE stories.merged_story_id = ?";
-    log_query = select_stories
+    let lq = select_stories
     .replace("?", &story.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     c = c
         .drop_exec(
             select_stories,
@@ -116,9 +115,9 @@ where
      ORDER BY \
      saldo ASC, \
      confidence DESC";
-    log_query = select_comments
+    let lq = select_comments
     .replace("?", &story.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     let comments = c
         .prep_exec(
             select_comments,
@@ -147,7 +146,7 @@ where
         "SELECT users.* FROM users WHERE users.id IN ({})",
         users
     );
-    println!("{}", select_usersv2);
+    log_query.push_str(&format!("\n{}", select_usersv2));
     c = c
         .drop_query(select_usersv2)
         .await?;
@@ -163,7 +162,7 @@ where
         "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
         comments
     );
-    println!("{}", select_votes);
+    log_query.push_str(&format!("\n{}", select_votes));
     c = c
         .drop_query(select_votes)
         .await?;
@@ -175,10 +174,10 @@ where
          WHERE votes.OWNER_user_id = ? \
          AND votes.story_id = ? \
          AND votes.comment_id IS NULL";
-        log_query = select_votesv2
+        let lq = select_votesv2
         .replacen("?", &uid.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_votesv2,
@@ -189,10 +188,10 @@ where
          FROM hidden_stories \
          WHERE hidden_stories.user_id = ? \
          AND hidden_stories.story_id = ?";
-        log_query = select_hidden
+        let lq = select_hidden
         .replacen("?", &uid.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_hidden,
@@ -203,10 +202,10 @@ where
          FROM saved_stories \
          WHERE saved_stories.user_id = ? \
          AND saved_stories.story_id = ?";
-        log_query = select_saved
+        let lq = select_saved
         .replacen("?", &uid.to_string(), 1)
         .replacen("?", &story.to_string(), 1);
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_saved,
@@ -218,9 +217,9 @@ where
     let select_taggings ="SELECT taggings.* \
      FROM taggings \
      WHERE taggings.story_id = ?";
-    log_query = select_taggings
+    let lq = select_taggings
     .replace("?", &story.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     let taggings = c
         .prep_exec(
             select_taggings,
@@ -245,14 +244,15 @@ where
         "SELECT tags.* FROM tags WHERE tags.id IN ({})",
         tags
     );
-    log_query = select_tags
+    let lq = select_tags
     .replace("?", &story.to_string());
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     let c = c
         .drop_query(select_tags)
         .await?;
 
-    println!("--end: story");
+    log_query.push_str("--end: story");
+    println!("{}", log_query);
 
     Ok((c, true))
 }
