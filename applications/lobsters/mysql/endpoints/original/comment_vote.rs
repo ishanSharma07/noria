@@ -17,7 +17,7 @@ where
     let select_comments = "SELECT comments.* \
      FROM comments \
      WHERE comments.short_id = ?";
-    let mut log_query = select_comments.replace("?", ::std::str::from_utf8(&comment[..]).unwrap());
+    let mut log_query = select_comments.replace("?", &format!("'{}'", ::std::str::from_utf8(&comment[..]).unwrap()));
     println!("{}", log_query);
     let (mut c, comment) = c
         .first_exec::<_, _, my::Row>(
