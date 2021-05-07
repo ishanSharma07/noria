@@ -14,6 +14,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: submit");
     let c = c.await?;
     let user = acting_as.unwrap();
 
@@ -206,6 +207,8 @@ where
             )
             .await?;
     }
+
+    println!("--end: submit");
 
     Ok((c, false))
 }

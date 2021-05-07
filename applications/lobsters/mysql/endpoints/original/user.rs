@@ -11,6 +11,8 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: user");
+
     let c = c.await?;
     let select_users = "SELECT users.* FROM users \
      WHERE users.PII_username = ?";
@@ -73,6 +75,8 @@ where
             (uid,),
         )
         .await?;
+
+    println!("--end: user");
 
     Ok((c, true))
 }

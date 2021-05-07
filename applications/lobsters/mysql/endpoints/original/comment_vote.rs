@@ -12,6 +12,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: comment_vote");
     let c = c.await?;
     let user = acting_as.unwrap();
     let select_comments = "SELECT comments.* \
@@ -233,6 +234,8 @@ where
             ),
         )
         .await?;
+
+    println!("--end: comment_vote");
 
     Ok((c, false))
 }

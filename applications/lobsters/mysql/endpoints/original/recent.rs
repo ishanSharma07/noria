@@ -12,6 +12,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: recent");
     // /recent is a little weird:
     // https://github.com/lobsters/lobsters/blob/50b4687aeeec2b2d60598f63e06565af226f93e3/app/models/story_repository.rb#L41
     // but it *basically* just looks for stories in the past few days
@@ -254,6 +255,8 @@ where
             )
             .await?;
     }
+
+    println!("--end: recent");
 
     Ok((c, true))
 }

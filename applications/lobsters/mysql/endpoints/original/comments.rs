@@ -12,6 +12,8 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: comments");
+
     let c = c.await?;
     let select_comments = "SELECT comments.* \
      FROM comments \
@@ -139,6 +141,8 @@ where
     c = c
         .drop_query(select_usersv2)
         .await?;
+
+    println!("--end: comments");
 
     Ok((c, true))
 }
