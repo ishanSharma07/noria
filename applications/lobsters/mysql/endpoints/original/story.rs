@@ -13,6 +13,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
+    println!("--start: story");
     // XXX: at the end there are also a bunch of repeated, seemingly superfluous queries
     let c = c.await?;
     let select_stories = "SELECT stories.* \
@@ -250,6 +251,8 @@ where
     let c = c
         .drop_query(select_tags)
         .await?;
+
+    println!("--end: story");
 
     Ok((c, true))
 }
