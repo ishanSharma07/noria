@@ -113,12 +113,12 @@ where
      VALUES ({}, {}, {})", id, story, tag.unwrap());
     println!("{}", log_query);
 
-    let key = format!("'user:{}:stories_submitted'", user);
+    let key = format!("user:{}:stories_submitted", user);
     let insert_keystore = "REPLACE INTO keystores (keyX, valueX) \
      VALUES (?, ?)"; // \
 //     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
     log_query = insert_keystore
-    .replacen("?", &key, 1)
+    .replacen("?", &format!("'{}'", key), 1)
     .replacen("?", "1", 1);
     println!("{}", log_query);
     c = c
@@ -133,7 +133,7 @@ where
         let select_keystore = "SELECT keystores.* \
          FROM keystores \
          WHERE keystores.keyX = ?";
-        log_query = select_keystore.replace("?", &key);
+        log_query = select_keystore.replace("?", &format!("'{}'", key));
         println!("{}", log_query);
         c = c
             .drop_exec(

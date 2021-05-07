@@ -29,7 +29,7 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
     let select_keystore = "SELECT keystores.* \
      FROM keystores \
      WHERE keystores.keyX = ?";
-    log_query = select_keystore.replace("?", &format!("user:{}:unread_messages", uid));
+    log_query = select_keystore.replace("?", &format!("'user:{}:unread_messages'", uid));
     println!("{}", log_query);
     c = c
         .drop_exec(

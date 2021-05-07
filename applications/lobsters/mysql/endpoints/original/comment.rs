@@ -309,11 +309,11 @@ where
         )
         .await?;
 
-    let key = format!("'user:{}:comments_posted'", user);
+    let key = format!("user:{}:comments_posted", user);
     let insert_keystore = "REPLACE INTO keystores (keyX, valueX) \
      VALUES (?, ?)"; // \
 //     ON DUPLICATE KEY UPDATE keystores.valueX = keystores.valueX + 1";
-    log_query = insert_keystore.replacen("?", &key, 1);
+    log_query = insert_keystore.replacen("?", &format!("'{}'", key), 1);
     log_query = log_query.replacen("?", "1", 1);
     println!("{}", log_query);
     c = c
