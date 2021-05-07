@@ -12,22 +12,22 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: recent");
+    let mut log_query = format!("--start: recent");
     // /recent is a little weird:
     // https://github.com/lobsters/lobsters/blob/50b4687aeeec2b2d60598f63e06565af226f93e3/app/models/story_repository.rb#L41
     // but it *basically* just looks for stories in the past few days
     // because all our stories are for the same day, we add a LIMIT
     // also note the NOW() hack to support dbs primed a while ago
     let c = c.await?;
-    let log_query = "SELECT stories.* FROM stories \
+    let lq = "SELECT stories.* FROM stories \
      WHERE stories.merged_story_id IS NULL \
      AND stories.is_expired = 0 \
      AND stories.upvotes - stories.downvotes <= 5 \
      ORDER BY stories.id DESC LIMIT 51";
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", lq));
     let stories = c
         .query(
-            log_query,
+            lq,
         )
         .await?;
     let (mut c, (users, stories)) = stories
@@ -53,9 +53,9 @@ where
         let select_hidden = "SELECT hidden_stories.story_id \
          FROM hidden_stories \
          WHERE hidden_stories.user_id = ?";
-        let log_query = select_hidden
+        let lq = select_hidden
            .replace("?", &uid.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         let x = c
             .drop_exec(
                 select_hidden,
@@ -65,9 +65,9 @@ where
 
         let select_tag_filters = "SELECT tag_filters.* FROM tag_filters \
          WHERE tag_filters.user_id = ?";
-        let log_query = select_tag_filters
+        let lq = select_tag_filters
            .replace("?", &uid.to_string());
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         let tags = x
             .prep_exec(
                 select_tag_filters,
@@ -101,7 +101,7 @@ where
                  AND taggings.tag_id IN ({})",
                 s, tags
             );
-            println!("{}", select_taggings);
+            log_query.push_str(&format!("\n{}", select_taggings));
             c = c
                 .drop_query(select_taggings)
                 .await?;
@@ -117,7 +117,7 @@ where
         "SELECT users.* FROM users WHERE users.id IN ({})",
         users,
     );
-    println!("{}", select_users);
+    log_query.push_str(&format!("\n{}", select_users));
     c = c
         .drop_query(select_users)
         .await?;
@@ -128,7 +128,7 @@ where
          WHERE suggested_titles.story_id IN ({})",
         stories_in
     );
-    println!("{}", select_sugg_titles);
+    log_query.push_str(&format!("\n{}", select_sugg_titles));
     c = c
         .drop_query(select_sugg_titles)
         .await?;
@@ -139,7 +139,7 @@ where
          WHERE suggested_taggings.story_id IN ({})",
         stories_in
     );
-    println!("{}", select_sugg_taggings);
+    log_query.push_str(&format!("\n{}", select_sugg_taggings));
     c = c
         .drop_query(select_sugg_taggings)
         .await?;
@@ -149,7 +149,7 @@ where
          WHERE taggings.story_id IN ({})",
         stories_in
     );
-    println!("{}", select_taggingsv2);
+    log_query.push_str(&format!("\n{}", select_taggingsv2));
     let taggings = c
         .query(select_taggingsv2)
         .await?;
@@ -170,7 +170,7 @@ where
         "SELECT tags.* FROM tags WHERE tags.id IN ({})",
         tags
     );
-    println!("{}", select_tags);
+    log_query.push_str(&format!("\n{}", select_tags));
     c = c
         .drop_query(select_tags)
         .await?;
@@ -193,13 +193,13 @@ where
              AND votes.comment_id IS NULL",
             story_params
         );
-        let mut log_query = select_votes.clone();
+        let mut lq = select_votes.clone();
         // Replace first ? with acting_as uid
-        log_query = log_query.replacen("?", &values[0].to_string(), 1);
+        lq = lq.replacen("?", &values[0].to_string(), 1);
         for i in 1..values.len(){
-            log_query = log_query.replacen("?", &values[i].to_string(), 1)
+            lq = lq.replacen("?", &values[i].to_string(), 1)
         }
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_votes,
@@ -223,7 +223,7 @@ where
         for i in 1..values.len(){
             log_hiddenv2 = log_hiddenv2.replacen("?", &values[i].to_string(), 1)
         }
-        println!("{}", log_hiddenv2);
+        log_query.push_str(&format!("\n{}", log_hiddenv2));
         c = c
             .drop_exec(
                 select_hiddenv2,
@@ -247,7 +247,7 @@ where
         for i in 1..values.len(){
             log_saved = log_saved.replacen("?", &values[i].to_string(), 1)
         }
-        println!("{}", log_saved);
+        log_query.push_str(&format!("\n{}", log_saved));
         c = c
             .drop_exec(
                 select_saved,
@@ -256,7 +256,8 @@ where
             .await?;
     }
 
-    println!("--end: recent");
+    log_query.push_str("\n--end: recent");
+    println!("{}", log_query);
 
     Ok((c, true))
 }

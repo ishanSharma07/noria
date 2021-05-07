@@ -12,7 +12,7 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    println!("--start: comments");
+    let mut log_query = format!("--start: comments");
 
     let c = c.await?;
     let select_comments = "SELECT comments.* \
@@ -21,7 +21,7 @@ where
      AND comments.is_moderated = 0 \
      ORDER BY id DESC \
      LIMIT 40";
-    println!("{}", select_comments);
+    log_query.push_str(&format!("\n{}", select_comments));
     let comments = c
         .query(select_comments)
         .await?;
@@ -49,11 +49,11 @@ where
                  AND hidden_stories.story_id IN ({})",
             params
         );
-        let mut log_query = select_one.clone();
+        let mut lq = select_one.clone();
         for &arg in args.iter(){
-            log_query = log_query.replacen("?", &arg.to_string(), 1)
+            lq = lq.replacen("?", &arg.to_string(), 1)
         }
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_one,
@@ -72,7 +72,7 @@ where
          WHERE users.id IN ({})",
         users
     );
-    println!("{}", select_users);
+    log_query.push_str(&format!("\n{}", select_users));
     c = c
         .drop_query(select_users)
         .await?;
@@ -88,7 +88,7 @@ where
          WHERE stories.id IN ({})",
         stories
     );
-    println!("{}", select_stories);
+    log_query.push_str(&format!("\n{}", select_stories));
     let stories = c
         .query(select_stories)
         .await?;
@@ -111,13 +111,13 @@ where
              AND votes.comment_id IN ({})",
             params
         );
-        let mut log_query = select_votes.clone();
+        let mut lq = select_votes.clone();
         // Replace first ? with acting_as uid
-        log_query = log_query.replacen("?", &comments[0].to_string(), 1);
+        lq = lq.replacen("?", &comments[0].to_string(), 1);
         for i in 1..comments.len(){
-            log_query = log_query.replacen("?", &comments[i].to_string(), 1)
+            lq = lq.replacen("?", &comments[i].to_string(), 1)
         }
-        println!("{}", log_query);
+        log_query.push_str(&format!("\n{}", lq));
         c = c
             .drop_exec(
                 select_votes,
@@ -137,12 +137,13 @@ where
              WHERE users.id IN ({})",
             authors
         );
-    println!("{}", select_usersv2);
+    log_query.push_str(&format!("\n{}", select_usersv2));
     c = c
         .drop_query(select_usersv2)
         .await?;
 
-    println!("--end: comments");
+    log_query.push_str(&format!("\n--end: comments"));
+    println!("{}", log_query);
 
     Ok((c, true))
 }
