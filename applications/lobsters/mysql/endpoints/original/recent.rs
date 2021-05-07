@@ -177,7 +177,7 @@ where
     // also load things that we need to highlight
     if let Some(uid) = acting_as {
         let story_params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let values: Vec<_> = iter::once(&uid as &_)
+        let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &_))
             .collect();
         let values_str = values
@@ -192,8 +192,10 @@ where
              AND votes.comment_id IS NULL",
             story_params
         );
-        let log_query = select_votes
-           .replace("?", &values_str);
+        let mut log_query = select_votes.clone();
+        for &value in values.iter(){
+            log_query = log_query.replacen("?", &value.to_string(), 1)
+        }
         println!("{}", log_query);
         c = c
             .drop_exec(
