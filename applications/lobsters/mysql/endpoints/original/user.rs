@@ -64,8 +64,7 @@ where
 
     let select_hats = "SELECT 1 AS `one` FROM hats \
      WHERE hats.OWNER_user_id = ? LIMIT 1";
-    log_query.push_str(&format!("\n{}", select_keystore.replace("?", &select_hats.replace("?", &uid.to_string()))));
-    println!("{}", log_query);
+    log_query.push_str(&format!("\n{}", select_hats.replace("?", &uid.to_string())));
     c = c
         .drop_exec(
             "SELECT 1 AS `one` FROM hats \
