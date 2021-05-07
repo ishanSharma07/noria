@@ -25,17 +25,17 @@
 --            stories.user_id = read_ribbons.user_id \
 --     ) \
 --     )"';
-CREATE VIEW q1 AS '"SELECT 1 AS `one`, PII_username FROM users WHERE users.PII_username = ?"';
-CREATE VIEW q2 AS '"SELECT 1 AS `one`, short_id FROM stories WHERE stories.short_id = ?"';
+CREATE VIEW q1 AS '"SELECT 1 AS `one` FROM users WHERE users.PII_username = ?"';
+CREATE VIEW q2 AS '"SELECT 1 AS `one` FROM stories WHERE stories.short_id = ?"';
 CREATE VIEW q3 AS '"SELECT tags.* FROM tags WHERE tags.inactive = 0 AND tags.tag = ?"';
 --needs support for `key` column names (backticks to escape keywords)
 CREATE VIEW q4 AS '"SELECT keystores.* FROM keystores WHERE keystores.keyX = ?"';
-CREATE VIEW q5 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id IS NULL"';
-CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON comments.story_id = stories.id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
-CREATE VIEW q7 AS '"SELECT stories.* FROM stories WHERE stories.short_id = ?"';
+CREATE VIEW q5 AS '"SELECT votes.* FROM votes WHERE votes.user_id = ? AND votes.story_id = ? AND votes.comment_id IS NULL"';
+CREATE VIEW q6 AS '"SELECT comments.upvotes, comments.downvotes FROM comments JOIN stories ON stories.id = comments.story_id WHERE comments.story_id = ? AND comments.user_id != stories.user_id"';
+CREATE VIEW q7 AS '"SELECT stories.id.* FROM stories WHERE stories.short_id = ?"';
 CREATE VIEW q8 AS '"SELECT users.* FROM users WHERE users.id = ?"';
-CREATE VIEW q9 AS '"SELECT 1 AS `one`, short_id FROM comments WHERE comments.short_id = ?"';
-CREATE VIEW q10 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.story_id = ? AND votes.comment_id = ?"';
+CREATE VIEW q9 AS '"SELECT 1 AS `one` FROM comments WHERE comments.short_id = ?"';
+CREATE VIEW q10 AS '"SELECT votes.* FROM votes WHERE votes.user_id = ? AND votes.story_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q11 AS '"SELECT stories.id FROM stories WHERE stories.merged_story_id = ?"';
 CREATE VIEW q12 AS '"SELECT comments.*, comments.upvotes - comments.downvotes AS saldo FROM comments WHERE comments.story_id = ? ORDER BY saldo ASC, confidence DESC"';
 CREATE VIEW q13 AS '"SELECT tags.* FROM tags INNER JOIN taggings ON tags.id = taggings.tag_id WHERE taggings.story_id = ?"';
@@ -59,7 +59,7 @@ CREATE VIEW q29 AS '"SELECT tags.* FROM tags WHERE tags.id = ?"';
 CREATE VIEW q30 AS '"SELECT comments.* FROM comments WHERE comments.is_deleted = 0 AND comments.is_moderated = 0 ORDER BY id DESC LIMIT 40"';
 CREATE VIEW q31 AS '"SELECT 1 FROM hidden_stories WHERE hidden_stories.user_id = ? AND hidden_stories.story_id = ?"';
 CREATE VIEW q32 AS '"SELECT stories.* FROM stories WHERE stories.id = ?"';
-CREATE VIEW q33 AS '"SELECT votes.* FROM votes WHERE votes.OWNER_user_id = ? AND votes.comment_id = ?"';
+CREATE VIEW q33 AS '"SELECT votes.* FROM votes WHERE votes.user_id = ? AND votes.comment_id = ?"';
 CREATE VIEW q34 AS '"SELECT comments.* FROM comments WHERE comments.short_id = ?"';
 CREATE VIEW q35 AS '"SELECT stories.* FROM stories WHERE stories.merged_story_id IS NULL AND stories.is_expired = 0 AND stories.upvotes - stories.downvotes <= 5 ORDER BY id DESC LIMIT 51"';
 --needs the big matview
