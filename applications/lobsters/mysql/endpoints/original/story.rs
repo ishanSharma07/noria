@@ -251,7 +251,7 @@ where
         .drop_query(select_tags)
         .await?;
 
-    log_query.push_str("--end: story");
+    log_query.push_str("\n--end: story");
     println!("{}", log_query);
 
     Ok((c, true))
