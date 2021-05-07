@@ -193,8 +193,10 @@ where
             story_params
         );
         let mut log_query = select_votes.clone();
-        for &value in values.iter(){
-            log_query = log_query.replacen("?", &value.to_string(), 1)
+        // Replace first ? with acting_as uid
+        log_query = log_query.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_query = log_query.replacen("?", &values[i].to_string(), 1)
         }
         println!("{}", log_query);
         c = c

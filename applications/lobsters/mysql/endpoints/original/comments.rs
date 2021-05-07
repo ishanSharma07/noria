@@ -110,8 +110,10 @@ where
             params
         );
         let mut log_query = select_votes.clone();
-        for &comment in comments.iter(){
-            log_query = log_query.replacen("?", &comment.to_string(), 1)
+        // Replace first ? with acting_as uid
+        log_query = log_query.replacen("?", &comments[0].to_string(), 1);
+        for i in 1..comments.len(){
+            log_query = log_query.replacen("?", &comments[i].to_string(), 1)
         }
         println!("{}", log_query);
         c = c

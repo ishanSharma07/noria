@@ -176,15 +176,14 @@ where
              AND votes.comment_id IS NULL",
             story_params
         );
-        let mut values_str = String::from("");
-        for &value in values.iter(){
-            values_str.push_str(&value.to_string());
-            values_str.push(',');
+
+        let mut log_select = select_votes.clone();
+        // Replace first ? with acting_as uid
+        log_select = log_select.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_select = log_select.replacen("?", &values[i].to_string(), 1)
         }
-        // Delete the last ','
-        values_str.pop();
-        let log_votes = select_votes.replace("?", &values_str);
-        println!("{}", log_votes);
+        println!("{}", log_select);
         c = c
             .drop_exec(
                 select_votes,
@@ -192,8 +191,8 @@ where
             )
             .await?;
 
-        let values: Vec<_> = iter::once(&uid as &_)
-            .chain(stories.iter().map(|s| s as &_))
+        let values: Vec<&UserId> = iter::once(&uid as &UserId)
+            .chain(stories.iter().map(|s| s as &UserId))
             .collect();
         let select_hiddenv2 = &format!(
             "SELECT hidden_stories.* \
@@ -202,7 +201,12 @@ where
              AND hidden_stories.story_id IN ({})",
             story_params
         );
-        let log_hiddenv2 = select_hiddenv2.replace("?", &values_str);
+        let mut log_hiddenv2 = select_hiddenv2.clone();
+        // Replace first ? with acting_as uid
+        log_hiddenv2 = log_hiddenv2.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_hiddenv2 = log_hiddenv2.replacen("?", &values[i].to_string(), 1)
+        }
         println!("{}", log_hiddenv2);
         c = c
             .drop_exec(
@@ -211,8 +215,8 @@ where
             )
             .await?;
 
-        let values: Vec<_> = iter::once(&uid as &_)
-            .chain(stories.iter().map(|s| s as &_))
+        let values: Vec<&UserId> = iter::once(&uid as &UserId)
+            .chain(stories.iter().map(|s| s as &UserId))
             .collect();
         let select_saved = &format!(
             "SELECT saved_stories.* \
@@ -221,7 +225,12 @@ where
              AND saved_stories.story_id IN ({})",
             story_params
         );
-        let log_saved = select_saved.replace("?", &values_str);
+        let mut log_saved = select_saved.clone();
+        // Replace first ? with acting_as uid
+        log_saved = log_saved.replacen("?", &values[0].to_string(), 1);
+        for i in 1..values.len(){
+            log_saved = log_saved.replacen("?", &values[i].to_string(), 1)
+        }
         println!("{}", log_saved);
         c = c
             .drop_exec(
