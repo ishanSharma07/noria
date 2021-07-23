@@ -13,12 +13,34 @@ view_name_pattern = re.compile('CREATE VIEW [\w\d]+ AS')
 where_in_pattern = re.compile('[\w\.]+ IN \([\w\d\', ]+\)')
 in_value_pattern = re.compile('\([\w\d\', ]+\)')
 
+# Hardcoded views for which our usual pattern matching fails.
+# E.g. for the first view (q12) in this dict, we project (upvotes - downvotes)
+# in its definition, and use that to ORDER.
+hardcoded = {
+  'SELECT comments\.\* FROM comments WHERE comments\.story_id = [0-9]+ ' +
+  'ORDER BY \(upvotes - downvotes\) < 0 ASC, confidence DESC': 'q12',
+}
+
+# Maps a view name to pair (constraints, direct_no_view)
+# The first is a string encoding WHERE condition constraints that appear in view
+# definition. The second specifies whether or not this view is actually used or
+# is skipped and its queries are directly executed against shards.
+views_dict = dict()
+
 def build_inverted_index(view_definitions):
     index = dict()
     for view_def in view_definitions:
         # Ignore a comment in queries.sql
         if view_def[0] == "-":
             continue
+        # If definition starts with @, we do not need to actually use this view,
+        # its queries are executed directly against shards.
+        direct_no_view = False
+        if view_def[0] == "@":
+            view_def = view_def[1:]
+            direct_no_view = True
+        # Logic for chunking view definition into a stem and constraints for
+        # pattern lookup.
         view_name = re.findall(view_name_pattern, view_def)[0][12:-3]
         initial_chunk = re.findall(where_pattern, view_def)[0]
         subseq_chunk = re.split(where_pattern, view_def)[1]
@@ -30,7 +52,9 @@ def build_inverted_index(view_definitions):
         predef_constraints = "&".join(re.findall(predef_condition_pttern, subseq_chunk))
         if predef_constraints != "":
             constraints = constraints + "&" +predef_constraints
+        # Reverse lookup of view based on constraints.
         index[initial_chunk][constraints] = view_name
+        views_dict[view_name] = (constraints, direct_no_view)
     return index
 
 def contains_variable_constraint(constraints):
@@ -39,22 +63,43 @@ def contains_variable_constraint(constraints):
             return True
     return False
 def semantically_equal(view_constraints, query_constraints):
+    # Sometimes, our constraint string building logic ends up with a leading '&'
+    # which on split results in an empty string. Filter those out.
+    view_constraints = [c for c in view_constraints if c != '']
+    query_constraints = [c for c in query_constraints if c != '']
     view_constraints.sort()
     query_constraints.sort()
+
     if len(view_constraints) != len(query_constraints):
         return False
     for i in range(len(view_constraints)):
-        if " IN " in query_constraints[i]:
-            if query_constraints[i].find(view_constraints[i][:-4]) == -1:
+        # if view definition compares against ?, the actual query that match it
+        # replaces ? with a concrete value (or list of values with IN).
+        if view_constraints[i][-1] == "?":
+            # If the query constraint uses IN, we check that the prefix before
+            # ' IN ' in the query, and before ' = ?' in the view match.
+            if " IN " in query_constraints[i]:
+                if query_constraints[i].find(view_constraints[i][:-4]) == -1:
+                    return False
+            # No IN, we check that the same view constraint is applied in the
+            # query, modulo the replacement of ? with something else.
+            elif query_constraints[i].find(view_constraints[i][:-1]) == -1:
                 return False
-        elif query_constraints[i].find(view_constraints[i][:-1]) == -1:
+        # View does not use ?, thus it uses a literal or name. This must match
+        # exactly in the query.
+        elif query_constraints[i] != view_constraints[i]:
             return False
     return True
 
 def build_where_clause(view_constraints, query_constraints):
+    # Sometimes, our constraint string building logic ends up with a leading '&'
+    # which on split results in an empty string. Filter those out.
+    view_constraints = [c for c in view_constraints if c != '']
+    query_constraints = [c for c in query_constraints if c != '']
     where_clause = "WHERE "
     view_constraints.sort()
     query_constraints.sort()
+
     view_constraints_subset = []
     query_constraints_subset = []
     if len(view_constraints) != len(query_constraints):
@@ -110,18 +155,62 @@ def transform_query(index, query):
     query_constraints = re.findall(predef_condition_pttern, subseq_chunk)
     query_constraints = query_constraints + re.findall(where_in_pattern, subseq_chunk)
 
-    if len(sub_map)!=0:
+    # This function is called on the view that matches the query definition.
+    # It is responsible for turning the query into a query that abides by the
+    # syntax limitations of pelton.
+    # If the view is not marked with `direct_no_view`, this rewrites the query
+    # so that it is executed against the view.
+    # If the view is marked with `direct_no_view`, this fixes syntax issues with
+    # the query, but leaves its core logic intact so that it is executed against
+    # shards and not a view.
+    def on_match(view_name, key, direct_no_view):
+        if direct_no_view:
+            # This query can be answered directly without views.
+            # Queries refer to columns as '<table_name>.<column_name>',
+            # we need to remove the <table_name>. prefix to be compatible with
+            # pelton.
+            final_query = re.sub(r"[A-Za-z_]+\.([A-Za-z_\*]+)", r"\1", query)
+
+            # Substitute 'IN' conditions of size 1 with direct equality.
+            # Keep 'IN' conditions with more than 1 value as is.
+            in_conditions = re.findall(r" IN \(.*\)", final_query)
+            if len(in_conditions) > 0:
+              stems = re.split(r" IN \(.*\)", final_query)
+              for i in range(len(in_conditions)):
+                  in_condition = in_conditions[i]
+                  vals = re.match(r" IN \((.*)\)", in_condition).group(1).split(",")
+                  if len(vals) > 1:
+                      return final_query
+                  else:
+                      stems[i] += ' = ' + vals[0]
+              final_query = ''.join(stems)
+            return final_query
+        else:
+            # This query needs a view. The view is already created.
+            # We just need to transform the query so that it is executed against
+            # the view.
+            where_clause = build_where_clause(key.split("&"), query_constraints)
+            final_query = "SELECT * FROM " + view_name + " " + where_clause
+            return final_query
+
+    # If the stem of the query matched some view(s) pre-parsed into our
+    # reverse index, sub_map would contain all the views matched.
+    # Otherwise, it is empty.
+    if len(sub_map) != 0:
+        # Check if any of the views matched have semantically equivalent
+        # constraints (modulo ? substitution).
         for key, view_name in sub_map.items():
-            if contains_variable_constraint(key.split("&")) == False:
-                # View definition does not have any `?`
-                projection = get_projection(key.split("&"))
-                final_query = "SELECT * FROM " + view_name;
-                return final_query
             if semantically_equal(key.split("&"), query_constraints):
-                projection = get_projection(key.split("&"))
-                where_clause = build_where_clause(key.split("&"), query_constraints)
-                final_query = "SELECT * FROM " + view_name + " " + where_clause
-                return final_query
+                _, direct_no_view = views_dict[key]
+                return on_match(view_name, key, direct_no_view)
+
+    # No views are matched. Perhaps this is one of the queries whose
+    # view is changed extensively. Try the hardcoded regex patterns.
+    for regex, view_name in hardcoded.items():
+        if re.match(regex, query):
+            key, direct_no_view = views_dict[view_name]
+            return on_match(view_name, key, direct_no_view)
+
     # If reached here it implies that there was no match
     exit("ERROR: Did not find match for query in the trace file. Query: " + query)
 
@@ -147,7 +236,9 @@ if __name__=="__main__":
     for trace in traces:
         if trace.startswith("#"):
             break
-        if trace == "" or trace.startswith("--") or trace.startswith("INSERT") or trace.startswith("REPLACE") or trace.startswith("UPDATE"):
+        if trace == "" or trace.startswith("--") or
+           trace.startswith("INSERT") or trace.startswith("REPLACE") or
+           trace.startswith("UPDATE"):
             out_file.write(trace + "\n")
             continue
         tq = transform_query(index, trace)
