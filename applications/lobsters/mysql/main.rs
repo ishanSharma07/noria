@@ -1,4 +1,4 @@
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 extern crate mysql_async as my;
 
