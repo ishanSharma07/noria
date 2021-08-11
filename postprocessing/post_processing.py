@@ -27,6 +27,9 @@ hardcoded = {
 # is skipped and its queries are directly executed against shards.
 views_dict = dict()
 
+# Counts how many queries were encountered per view.
+counts_dict = dict()
+
 def build_inverted_index(view_definitions):
     index = dict()
     for view_def in view_definitions:
@@ -164,6 +167,7 @@ def transform_query(index, query):
     # the query, but leaves its core logic intact so that it is executed against
     # shards and not a view.
     def on_match(view_name, key, direct_no_view):
+        counts_dict[view_name] = counts_dict.get(view_name, 0) + 1
         if direct_no_view:
             # This query can be answered directly without views.
             # Queries refer to columns as '<table_name>.<column_name>',
@@ -201,7 +205,7 @@ def transform_query(index, query):
         # constraints (modulo ? substitution).
         for key, view_name in sub_map.items():
             if semantically_equal(key.split("&"), query_constraints):
-                _, direct_no_view = views_dict[key]
+                _, direct_no_view = views_dict[view_name]
                 return on_match(view_name, key, direct_no_view)
 
     # No views are matched. Perhaps this is one of the queries whose
@@ -236,12 +240,15 @@ if __name__=="__main__":
     for trace in traces:
         if trace.startswith("#"):
             break
-        if trace == "" or trace.startswith("--") or
-           trace.startswith("INSERT") or trace.startswith("REPLACE") or
+        if trace == "" or trace.startswith("--") or \
+           trace.startswith("INSERT") or trace.startswith("REPLACE") or \
            trace.startswith("UPDATE"):
             out_file.write(trace + "\n")
             continue
         tq = transform_query(index, trace)
-        #print(tq)
         out_file.write(tq + "\n")
     out_file.close()
+
+    # Print statistics
+    for key, value in counts_dict.items():
+      print(key, value)
