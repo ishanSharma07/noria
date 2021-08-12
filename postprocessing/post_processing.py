@@ -106,13 +106,16 @@ def build_where_clause(view_constraints, query_constraints):
     view_constraints_subset = []
     query_constraints_subset = []
     if len(view_constraints) != len(query_constraints):
-        return False
+        return None
+
     # Separate out constraints with `?`, param values will only be fetched for
     # those
     for i in range(len(view_constraints)):
         if '?' in view_constraints[i]:
             view_constraints_subset.append(view_constraints[i])
             query_constraints_subset.append(query_constraints[i])
+    if len(view_constraints_subset) == 0:  # No where clause needed.
+        return ""
     for i in range(len(view_constraints_subset)):
         # everything except `?`
         left_expression = ""
@@ -154,6 +157,7 @@ def transform_query(index, query):
     if not initial_chunk in index:
         exit("ERROR: unknown query stem {}\n\nQuery: {}\n\nKnown stems: {}".format(
              initial_chunk, query, index.keys()))
+
     sub_map = index[initial_chunk]
     query_constraints = re.findall(predef_condition_pttern, subseq_chunk)
     query_constraints = query_constraints + re.findall(where_in_pattern, subseq_chunk)
@@ -173,27 +177,15 @@ def transform_query(index, query):
             # Queries refer to columns as '<table_name>.<column_name>',
             # we need to remove the <table_name>. prefix to be compatible with
             # pelton.
-            final_query = re.sub(r"[A-Za-z_]+\.([A-Za-z_\*]+)", r"\1", query)
-
-            # Substitute 'IN' conditions of size 1 with direct equality.
-            # Keep 'IN' conditions with more than 1 value as is.
-            in_conditions = re.findall(r" IN \(.*\)", final_query)
-            if len(in_conditions) > 0:
-              stems = re.split(r" IN \(.*\)", final_query)
-              for i in range(len(in_conditions)):
-                  in_condition = in_conditions[i]
-                  vals = re.match(r" IN \((.*)\)", in_condition).group(1).split(",")
-                  if len(vals) > 1:
-                      return final_query
-                  else:
-                      stems[i] += ' = ' + vals[0]
-              final_query = ''.join(stems)
-            return final_query
+            return re.sub(r"[A-Za-z_]+\.([A-Za-z_\*]+)", r"\1", query)
         else:
             # This query needs a view. The view is already created.
             # We just need to transform the query so that it is executed against
             # the view.
             where_clause = build_where_clause(key.split("&"), query_constraints)
+            if where_clause is None:
+                exit("ERROR: could not build where clause for query: " + query)
+
             final_query = "SELECT * FROM " + view_name + " " + where_clause
             return final_query
 
