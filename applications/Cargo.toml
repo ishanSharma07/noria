@@ -110,6 +110,11 @@ name = "lobsters-noria"
 path = "lobsters/noria/main.rs"
 doc = false
 
+[[bin]]
+name = "lobsters-pelton"
+path = "lobsters/pelton/main.rs"
+doc = false
+
 #[[bin]]
 #name = "security-mysql"
 #path = "piazza/mysql.rs"
