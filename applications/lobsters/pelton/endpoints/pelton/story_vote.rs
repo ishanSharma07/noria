@@ -100,11 +100,8 @@ where
         .await?;
 
     // get all the stuff needed to compute updated hotness
-    let select_tags = "SELECT tags.* \
-     FROM tags \
-     INNER JOIN taggings \
-     ON tags.id = taggings.tag_id \
-     WHERE taggings.story_id = ?";
+    let select_tags = "SELECT * FROM q13 \
+     WHERE story_id = ?";
     let lq = select_tags.replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
     c = c
@@ -114,13 +111,8 @@ where
         )
         .await?;
 
-    let select_comments = "SELECT \
-     comments.upvotes, \
-     comments.downvotes \
-     FROM comments \
-     JOIN stories ON comments.story_id = stories.id \
-     WHERE comments.story_id = ? \
-     AND comments.user_id != stories.user_id";
+    let select_comments = "SELECT * from q6 \
+     WHERE story_id = ?";
     let lq = select_comments.replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
     c = c
@@ -130,9 +122,8 @@ where
         )
         .await?;
 
-    let select_storiesv2 = "SELECT stories.id \
-     FROM stories \
-     WHERE stories.merged_story_id = ?";
+    let select_storiesv2 = "SELECT id FROM q11 \
+     WHERE merged_story_id = ?";
     let lq = select_storiesv2.replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
     c = c

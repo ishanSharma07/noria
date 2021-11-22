@@ -132,9 +132,8 @@ where
         .await?;
 
     // get all the stuff needed to compute updated hotness
-    let select_stories = "SELECT stories.* \
-     FROM stories \
-     WHERE stories.id = ?";
+    let select_stories = "SELECT * FROM q32 \
+     WHERE id = ?";
     log_query.push_str(&format!("\n{}", select_stories
       .replace("?", &sid.to_string())));
 
@@ -147,10 +146,8 @@ where
     let story = story.unwrap();
     let score = story.get::<i64, _>("hotness").unwrap();
 
-    let select_tags = "SELECT tags.* \
-     FROM tags \
-     INNER JOIN taggings ON tags.id = taggings.tag_id \
-     WHERE taggings.story_id = ?";
+    let select_tags = "SELECT * FROM q13 \
+     WHERE story_id = ?";
      log_query.push_str(&format!("\n{}", select_tags.replace("?", &sid.to_string())));
 
     c = c
@@ -160,13 +157,8 @@ where
         )
         .await?;
 
-    let select_commentsv2 = "SELECT \
-     comments.upvotes, \
-     comments.downvotes \
-     FROM comments \
-     JOIN stories ON comments.story_id = stories.id \
-     WHERE comments.story_id = ? \
-     AND comments.user_id != stories.user_id";
+    let select_commentsv2 = "SELECT * FROM q6 \
+     WHERE story_id = ?";
      log_query.push_str(&format!("\n{}", select_commentsv2.replace("?", &sid.to_string())));
     c = c
         .drop_exec(
@@ -175,9 +167,8 @@ where
         )
         .await?;
 
-    let select_storiesv2 = "SELECT stories.id \
-     FROM stories \
-     WHERE stories.merged_story_id = ?";
+    let select_storiesv2 = "SELECT * FROM q11 \
+     WHERE merged_story_id = ?";
     log_query.push_str(&format!("\n{}", select_storiesv2.replace("?", &sid.to_string())));
     c = c
         .drop_exec(

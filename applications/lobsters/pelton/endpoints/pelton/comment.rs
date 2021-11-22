@@ -209,9 +209,8 @@ where
      comment, 1);
     log_query.push_str(&format!("\n{}", lq));
 
-    let select_storiesv2 = "SELECT stories.id \
-     FROM stories \
-     WHERE stories.merged_story_id = ?";
+    let select_storiesv2 = "SELECT * FROM q11 \
+     WHERE merged_story_id = ?";
     let lq = select_storiesv2.replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
     c = c
@@ -221,12 +220,9 @@ where
         )
         .await?;
 
-    let select_commentsv2 = "SELECT comments.* \
-     FROM comments \
-     WHERE comments.story_id = ? \
-     ORDER BY \
-     (upvotes - downvotes) < 0 ASC, \
-     confidence DESC";
+    let select_commentsv2 = "SELECT * \
+     FROM q12 \
+     WHERE story_id = ?";
     log_query.push_str(&format!("\n{}", select_commentsv2.replace("?", &story.to_string())));
     // why are these ordered?
     let (mut c, count) = c
@@ -251,11 +247,8 @@ where
 
     if !priming {
         // get all the stuff needed to compute updated hotness
-        let select_tags = "SELECT tags.* \
-         FROM tags \
-         INNER JOIN taggings \
-         ON tags.id = taggings.tag_id \
-         WHERE taggings.story_id = ?";
+        let select_tags = "SELECT * FROM q13 \
+         WHERE story_id = ?";
         log_query.push_str(&format!("\n{}", select_tags.replace("?", &story.to_string())));
         c = c
             .drop_exec(
@@ -263,13 +256,8 @@ where
                 (story,),
             )
             .await?;
-        let select_commentsv3 = "SELECT \
-         comments.upvotes, \
-         comments.downvotes \
-         FROM comments \
-         JOIN stories ON comments.story_id = stories.id \
-         WHERE comments.story_id = ? \
-         AND comments.user_id != stories.user_id";
+        let select_commentsv3 = "SELECT * FROM q6 \
+         WHERE story_id = ?";
         log_query.push_str(&format!("\n{}", select_commentsv3.replace("?", &story.to_string())));
         c = c
             .drop_exec(
@@ -277,9 +265,8 @@ where
                 (story,),
             )
             .await?;
-        let select_storiesv3 = "SELECT stories.id \
-         FROM stories \
-         WHERE stories.merged_story_id = ?";
+        let select_storiesv3 = "SELECT * FROM q11 \
+         WHERE merged_story_id = ?";
         log_query.push_str(&format!("\n{}", select_storiesv3.replace("?", &story.to_string())));
         c = c
             .drop_exec(

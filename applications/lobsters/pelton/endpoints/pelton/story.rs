@@ -96,9 +96,8 @@ where
     }
 
     // XXX: probably not drop here, but we know we have no merged stories
-    let select_stories = "SELECT stories.id \
-     FROM stories \
-     WHERE stories.merged_story_id = ?";
+    let select_stories = "SELECT id FROM q11 \
+     WHERE merged_story_id = ?";
     let lq = select_stories
     .replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
@@ -109,12 +108,8 @@ where
         )
         .await?;
 
-    let select_comments = "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
-     FROM comments \
-     WHERE comments.story_id = ? \
-     ORDER BY \
-     saldo ASC, \
-     confidence DESC";
+    let select_comments = "SELECT * FROM q12 \
+     WHERE story_id = ?";
     let lq = select_comments
     .replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
@@ -159,7 +154,7 @@ where
         .collect::<Vec<_>>()
         .join(", ");
     let select_votes = &format!(
-        "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
+        "SELECT * FROM q17 WHERE comment_id IN ({})",
         comments
     );
     log_query.push_str(&format!("\n{}", select_votes));
@@ -214,9 +209,8 @@ where
             .await?;
     }
 
-    let select_taggings ="SELECT taggings.* \
-     FROM taggings \
-     WHERE taggings.story_id = ?";
+    let select_taggings ="SELECT * FROM q26\
+     WHERE story_id = ?";
     let lq = select_taggings
     .replace("?", &story.to_string());
     log_query.push_str(&format!("\n{}", lq));
@@ -241,7 +235,7 @@ where
         .join(", ");
 
     let select_tags =&format!(
-        "SELECT tags.* FROM tags WHERE tags.id IN ({})",
+        "SELECT * FROM q29 WHERE id IN ({})",
         tags
     );
     let lq = select_tags

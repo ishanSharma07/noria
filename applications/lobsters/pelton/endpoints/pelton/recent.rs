@@ -19,11 +19,7 @@ where
     // because all our stories are for the same day, we add a LIMIT
     // also note the NOW() hack to support dbs primed a while ago
     let c = c.await?;
-    let lq = "SELECT stories.* FROM stories \
-     WHERE stories.merged_story_id IS NULL \
-     AND stories.is_expired = 0 \
-     AND stories.upvotes - stories.downvotes <= 5 \
-     ORDER BY stories.id DESC LIMIT 51";
+    let lq = "SELECT * FROM q35";
     log_query.push_str(&format!("\n{}", lq));
     let stories = c
         .query(
@@ -93,7 +89,7 @@ where
                 .map(|id| format!("{}", id))
                 .collect::<Vec<_>>()
                 .join(",");
-
+            // TODO(Ishan): If mapping is required then which view to map this to?
             let select_taggings = &format!(
                 "SELECT taggings.story_id \
                  FROM taggings \
@@ -123,9 +119,8 @@ where
         .await?;
 
     let select_sugg_titles = &format!(
-        "SELECT suggested_titles.* \
-         FROM suggested_titles \
-         WHERE suggested_titles.story_id IN ({})",
+        "SELECT * FROM q25 \
+         WHERE story_id IN ({})",
         stories_in
     );
     log_query.push_str(&format!("\n{}", select_sugg_titles));
@@ -134,9 +129,8 @@ where
         .await?;
 
     let select_sugg_taggings = &format!(
-        "SELECT suggested_taggings.* \
-         FROM suggested_taggings \
-         WHERE suggested_taggings.story_id IN ({})",
+        "SELECT * FROM q28 \
+         WHERE story_id IN ({})",
         stories_in
     );
     log_query.push_str(&format!("\n{}", select_sugg_taggings));
@@ -145,8 +139,8 @@ where
         .await?;
 
     let select_taggingsv2 = &format!(
-        "SELECT taggings.* FROM taggings \
-         WHERE taggings.story_id IN ({})",
+        "SELECT * FROM q26 \
+         WHERE story_id IN ({})",
         stories_in
     );
     log_query.push_str(&format!("\n{}", select_taggingsv2));
@@ -167,7 +161,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
     let select_tags = &format!(
-        "SELECT tags.* FROM tags WHERE tags.id IN ({})",
+        "SELECT * FROM q29 WHERE id IN ({})",
         tags
     );
     log_query.push_str(&format!("\n{}", select_tags));

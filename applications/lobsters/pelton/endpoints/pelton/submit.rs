@@ -176,13 +176,8 @@ where
     log_query.push_str(&format!("\n{}", lq));
 
     if !priming {
-        let select_comments = "SELECT \
-         comments.upvotes, \
-         comments.downvotes \
-         FROM comments \
-         JOIN stories ON comments.story_id = stories.id \
-         WHERE comments.story_id = ? \
-         AND comments.user_id != stories.user_id";
+        let select_comments = "SELECT * FROM q6 \
+         WHERE comments.story_id = ?";
         let lq = select_comments.replace("?", &story.to_string());
         log_query.push_str(&format!("\n{}", lq));
         c = c

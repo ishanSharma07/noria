@@ -15,12 +15,7 @@ where
     let mut log_query = format!("--start: comments");
 
     let c = c.await?;
-    let select_comments = "SELECT comments.* \
-     FROM comments \
-     WHERE comments.is_deleted = 0 \
-     AND comments.is_moderated = 0 \
-     ORDER BY id DESC \
-     LIMIT 40";
+    let select_comments = "SELECT * FROM q30";
     log_query.push_str(&format!("\n{}", select_comments));
     let comments = c
         .query(select_comments)
@@ -84,8 +79,8 @@ where
         .join(",");
 
     let select_stories = &format!(
-        "SELECT stories.* FROM stories \
-         WHERE stories.id IN ({})",
+        "SELECT * FROM q32 \
+         WHERE id IN ({})",
         stories
     );
     log_query.push_str(&format!("\n{}", select_stories));

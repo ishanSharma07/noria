@@ -26,13 +26,7 @@ where
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
 
     // most popular tag
-    let select_tags = "SELECT tags.id, count(*) AS `count` FROM tags \
-     INNER JOIN taggings ON tags.id = taggings.tag_id \
-     INNER JOIN stories ON taggings.story_id = stories.id \
-     WHERE tags.inactive = 0 \
-     AND stories.user_id = ? \
-     GROUP BY tags.id \
-     ORDER BY `count` DESC LIMIT 1";
+    let select_tags = "SELECT id, count FROM q22 WHERE user_id = ?";
     log_query.push_str(&format!("\n{}", select_tags.replace("?", &uid.to_string())));
     c = c
         .drop_exec(
@@ -62,13 +56,13 @@ where
         )
         .await?;
 
-    let select_hats = "SELECT 1 AS `one` FROM hats \
-     WHERE hats.OWNER_user_id = ? LIMIT 1";
+    let select_hats = "SELECT `one` FROM q27 \
+     WHERE OWNER_user_id = ?";
     log_query.push_str(&format!("\n{}", select_hats.replace("?", &uid.to_string())));
     c = c
         .drop_exec(
-            "SELECT 1 AS `one` FROM hats \
-             WHERE hats.OWNER_user_id = ? LIMIT 1",
+            "SELECT `one` FROM q27 \
+             WHERE OWNER_user_id = ?",
             (uid,),
         )
         .await?;
