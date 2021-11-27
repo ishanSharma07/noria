@@ -202,40 +202,31 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Login => {
                         let c = c.await?;
-                        let select_query = "SELECT 1 AS `one` FROM users WHERE users.PII_username = '?';";
-                        let mut log_query = select_query.replace("?", &acting_as.unwrap().to_string());
                         let (mut c, user) = c
                             .first_exec::<_, _, my::Row>(
-                                log_query.clone(),
-                                (),
+                                "SELECT 1 AS `one` FROM users WHERE users.PII_username = '?'",
+                                (format!("user{}", acting_as.unwrap()),),
                             )
                             .await?;
 
                         if user.is_none() {
                             let uid = acting_as.unwrap();
-                            let insert_query = "INSERT INTO users \
-                            (id, PII_username, email, password_digest, created_at, is_admin, \
-                            password_reset_token, session_token, about, invited_by_user_id,\
-                            is_moderator, pushover_mentions, rss_token, mailing_list_token,\
-                            mailing_list_mode, karma, banned_at, banned_by_user_id, \
-                            banned_reason, deleted_at, disabled_invite_at, \
-                            disabled_invite_by_user_id, disabled_invite_reason, settings) \
-                            VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
-                                NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);";
-                            let log_insert = insert_query
-                            .replacen("?", &uid.to_string(), 1)
-                            .replacen("?", &format!("'{}'", uid.to_string()), 1)
-                            .replacen("?", &format!("'session_token_{}'", &uid.to_string()), 1);
-                            log_query.push_str(&format!("\n{}", log_insert));
                             c = c
                                 .drop_exec(
-                                    log_insert,
-                                    (),
+                                    "INSERT INTO users \
+                                    (id, PII_username, email, password_digest, created_at, is_admin, \
+                                    password_reset_token, session_token, about, invited_by_user_id,\
+                                    is_moderator, pushover_mentions, rss_token, mailing_list_token,\
+                                    mailing_list_mode, karma, banned_at, banned_by_user_id, \
+                                    banned_reason, deleted_at, disabled_invite_at, \
+                                    disabled_invite_by_user_id, disabled_invite_reason, settings) \
+                                    VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
+                                        NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
+                                    (format!("{}", uid), format!("'{}'", uid), format!("'session_token_{}'", uid),),
                                 )
                                 .await?;
                         }
 
-                        println!("{}", log_query);
                         Ok((c, false))
                     }
                     LobstersRequest::Logout => Ok((c.await?, false)),

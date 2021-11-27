@@ -12,13 +12,10 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    let mut log_query = String::from("--start: frontpage");
     let c = c.await?;
-    let select_stories = "SELECT * FROM q16";
-    log_query.push_str(&format!("\n{}", select_stories));
     let stories = c
         .query(
-            select_stories,
+            "SELECT * FROM q16",
         )
         .await?;
     let (mut c, (users, stories)) = stories
@@ -41,23 +38,19 @@ where
         .join(",");
 
     if let Some(uid) = acting_as {
-        let select_hidden = "SELECT hidden_stories.story_id \
-         FROM hidden_stories \
-         WHERE hidden_stories.user_id = ?";
-         log_query.push_str(&format!("\n{}", select_hidden.replace("?", &uid.to_string())));
         let x = c
             .drop_exec(
-                select_hidden,
+                "SELECT hidden_stories.story_id \
+                 FROM hidden_stories \
+                 WHERE hidden_stories.user_id = ?",
                 (uid,),
             )
             .await?;
 
-        let select_tags = "SELECT tag_filters.* FROM tag_filters \
-         WHERE tag_filters.user_id = ?";
-         log_query.push_str(&format!("\n{}", select_tags.replace("?", &uid.to_string())));
         let tags = x
             .prep_exec(
-                select_tags,
+                "SELECT tag_filters.* FROM tag_filters \
+                 WHERE tag_filters.user_id = ?",
                 (uid,),
             )
             .await?;
@@ -75,17 +68,15 @@ where
                 .map(|id| format!("{}", id))
                 .collect::<Vec<_>>()
                 .join(",");
-            // TODO(Ishan): If mapping is required then which view to map this to?
-            let select_taggings = &format!(
-                "SELECT taggings.story_id \
-                 FROM taggings \
-                 WHERE taggings.story_id IN ({}) \
-                 AND taggings.tag_id IN ({})",
-                stories_in, tags
-            );
-            log_query.push_str(&format!("\n{}", select_taggings));
+
             c = c
-                .drop_query(select_taggings)
+                .drop_query(&format!(
+                    "SELECT taggings.story_id \
+                     FROM taggings \
+                     WHERE taggings.story_id IN ({}) \
+                     AND taggings.tag_id IN ({})",
+                    stories_in, tags
+                ))
                 .await?;
         }
     }
@@ -95,42 +86,37 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(",");
-    let select_usersv2 = &format!(
-        "SELECT users.* FROM users WHERE users.id IN ({})",
-        users,
-    );
-    log_query.push_str(&format!("\n{}", select_usersv2));
+
     c = c
-        .drop_query(select_usersv2)
-        .await?;
-    let select_sugg_titles = &format!(
-        "SELECT * FROM q25 \
-         WHERE story_id IN ({})",
-        stories_in
-    );
-    log_query.push_str(&format!("\n{}", select_sugg_titles));
-    c = c
-        .drop_query(select_sugg_titles)
+        .drop_query(&format!(
+            "SELECT users.* FROM users WHERE users.id IN ({})",
+            users,
+        ))
         .await?;
 
-    let select_sugg_taggings = &format!(
-        "SELECT * FROM q28 \
-         WHERE story_id IN ({})",
-        stories_in
-    );
-    log_query.push_str(&format!("\n{}", select_sugg_taggings));
     c = c
-        .drop_query(select_sugg_taggings)
+        .drop_query(&format!(
+            "SELECT * FROM q25 \
+             WHERE story_id IN ({})",
+            stories_in
+        ))
         .await?;
 
-    let select_taggingsv2 = &format!(
-        "SELECT * FROM q26 \
-         WHERE story_id IN ({})",
-        stories_in
-    );
-    log_query.push_str(&format!("\n{}", select_taggingsv2));
+
+    c = c
+        .drop_query(&format!(
+            "SELECT * FROM q28 \
+             WHERE story_id IN ({})",
+            stories_in
+        ))
+        .await?;
+
     let taggings = c
-        .query(select_taggingsv2)
+        .query( &format!(
+            "SELECT * FROM q26 \
+             WHERE story_id IN ({})",
+            stories_in
+        ))
         .await?;
 
     let (mut c, tags) = taggings
@@ -145,13 +131,12 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(",");
-    let select_tagsv2 = &format!(
-        "SELECT * FROM q29 WHERE tags.id IN ({})",
-        tags
-    );
-    log_query.push_str(&format!("\n{}", select_tagsv2));
+
     c = c
-        .drop_query(select_tagsv2)
+        .drop_query(&format!(
+            "SELECT * FROM q29 WHERE tags.id IN ({})",
+            tags
+        ))
         .await?;
 
     // also load things that we need to highlight
@@ -160,24 +145,15 @@ where
         let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &UserId))
             .collect();
-        let select_votes = &format!(
-            "SELECT votes.* FROM votes \
-             WHERE votes.OWNER_user_id = ? \
-             AND votes.story_id IN ({}) \
-             AND votes.comment_id IS NULL",
-            story_params
-        );
-
-        let mut lq = select_votes.clone();
-        // Replace first ? with acting_as uid
-        lq = lq.replacen("?", &values[0].to_string(), 1);
-        for i in 1..values.len(){
-            lq = lq.replacen("?", &values[i].to_string(), 1)
-        }
-        log_query.push_str(&format!("\n{}", select_tagsv2));
         c = c
             .drop_exec(
-                select_votes,
+                &format!(
+                    "SELECT votes.* FROM votes \
+                     WHERE votes.OWNER_user_id = ? \
+                     AND votes.story_id IN ({}) \
+                     AND votes.comment_id IS NULL",
+                    story_params
+                ),
                 values,
             )
             .await?;
@@ -185,23 +161,15 @@ where
         let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &UserId))
             .collect();
-        let select_hiddenv2 = &format!(
-            "SELECT hidden_stories.* \
-             FROM hidden_stories \
-             WHERE hidden_stories.user_id = ? \
-             AND hidden_stories.story_id IN ({})",
-            story_params
-        );
-        let mut log_hiddenv2 = select_hiddenv2.clone();
-        // Replace first ? with acting_as uid
-        log_hiddenv2 = log_hiddenv2.replacen("?", &values[0].to_string(), 1);
-        for i in 1..values.len(){
-            log_hiddenv2 = log_hiddenv2.replacen("?", &values[i].to_string(), 1)
-        }
-        log_query.push_str(&format!("\n{}", log_hiddenv2));
         c = c
             .drop_exec(
-                select_hiddenv2,
+                &format!(
+                    "SELECT hidden_stories.* \
+                     FROM hidden_stories \
+                     WHERE hidden_stories.user_id = ? \
+                     AND hidden_stories.story_id IN ({})",
+                    story_params
+                ),
                 values,
             )
             .await?;
@@ -209,29 +177,19 @@ where
         let values: Vec<&UserId> = iter::once(&uid as &UserId)
             .chain(stories.iter().map(|s| s as &UserId))
             .collect();
-        let select_saved = &format!(
-            "SELECT saved_stories.* \
-             FROM saved_stories \
-             WHERE saved_stories.user_id = ? \
-             AND saved_stories.story_id IN ({})",
-            story_params
-        );
-        let mut log_saved = select_saved.clone();
-        // Replace first ? with acting_as uid
-        log_saved = log_saved.replacen("?", &values[0].to_string(), 1);
-        for i in 1..values.len(){
-            log_saved = log_saved.replacen("?", &values[i].to_string(), 1)
-        }
-        log_query.push_str(&format!("\n{}", log_saved));
         c = c
             .drop_exec(
-                select_saved,
+                &format!(
+                    "SELECT saved_stories.* \
+                     FROM saved_stories \
+                     WHERE saved_stories.user_id = ? \
+                     AND saved_stories.story_id IN ({})",
+                    story_params
+                ),
                 values,
             )
             .await?;
     }
 
-    log_query.push_str("\n--end: frontpage");
-    println!("{}", log_query);
     Ok((c, true))
 }
