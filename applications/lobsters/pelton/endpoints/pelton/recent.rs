@@ -20,7 +20,11 @@ where
     let c = c.await?;
     let stories = c
         .query(
-            "SELECT * FROM q35",
+            "SELECT stories.* FROM stories \
+             WHERE stories.merged_story_id IS NULL \
+             AND stories.is_expired = 0 \
+             AND stories.upvotes - stories.downvotes <= 5 \
+             ORDER BY stories.id DESC LIMIT 51",
         )
         .await?;
     let (mut c, (users, stories)) = stories
@@ -106,24 +110,26 @@ where
 
     c = c
         .drop_query(&format!(
-            "SELECT * FROM q25 \
-             WHERE story_id IN ({})",
+            "SELECT suggested_titles.* \
+             FROM suggested_titles \
+             WHERE suggested_titles.story_id IN ({})",
             stories_in
         ))
         .await?;
 
     c = c
         .drop_query(&format!(
-            "SELECT * FROM q28 \
-             WHERE story_id IN ({})",
+            "SELECT suggested_taggings.* \
+             FROM suggested_taggings \
+             WHERE suggested_taggings.story_id IN ({})",
             stories_in
         ))
         .await?;
 
     let taggings = c
         .query(&format!(
-            "SELECT * FROM q26 \
-             WHERE story_id IN ({})",
+            "SELECT taggings.* FROM taggings \
+             WHERE taggings.story_id IN ({})",
             stories_in
         ))
         .await?;
@@ -142,7 +148,7 @@ where
         .join(",");
     c = c
         .drop_query(&format!(
-            "SELECT * FROM q29 WHERE id IN ({})",
+            "SELECT tags.* FROM tags WHERE tags.id IN ({})",
             tags
         ))
         .await?;

@@ -14,7 +14,12 @@ where
 {
     let c = c.await?;
     let comments = c
-        .query("SELECT * FROM q30")
+        .query("SELECT comments.* \
+         FROM comments \
+         WHERE comments.is_deleted = 0 \
+         AND comments.is_moderated = 0 \
+         ORDER BY id DESC \
+         LIMIT 40")
         .await?;
 
     let (mut c, (comments, users, stories)) = comments
@@ -68,8 +73,8 @@ where
 
     let stories = c
         .query(&format!(
-            "SELECT * FROM q32 \
-             WHERE id IN ({})",
+            "SELECT stories.* FROM stories \
+             WHERE stories.id IN ({})",
             stories
         ))
         .await?;

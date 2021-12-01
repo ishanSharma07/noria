@@ -132,8 +132,13 @@ where
     if !priming {
         c = c
             .drop_exec(
-                "SELECT * FROM q6 \
-                 WHERE comments.story_id = ?",
+                "SELECT \
+                 comments.upvotes, \
+                 comments.downvotes \
+                 FROM comments \
+                 JOIN stories ON comments.story_id = stories.id \
+                 WHERE comments.story_id = ? \
+                 AND comments.user_id != stories.user_id",
                 (story,),
             )
             .await?;

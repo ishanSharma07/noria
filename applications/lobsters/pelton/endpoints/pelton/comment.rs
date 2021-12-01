@@ -160,8 +160,9 @@ where
 
     c = c
         .drop_exec(
-            "SELECT * FROM q11 \
-             WHERE merged_story_id = ?",
+            "SELECT stories.id \
+             FROM stories \
+             WHERE stories.merged_story_id = ?",
             (story,),
         )
         .await?;
@@ -169,9 +170,12 @@ where
     // why are these ordered?
     let (mut c, count) = c
         .prep_exec(
-            "SELECT * \
-             FROM q12 \
-             WHERE story_id = ?",
+            "SELECT comments.* \
+             FROM comments \
+             WHERE comments.story_id = ? \
+             ORDER BY \
+             (upvotes - downvotes) < 0 ASC, \
+             confidence DESC",
             (story,),
         )
         .await?
@@ -189,24 +193,33 @@ where
         // get all the stuff needed to compute updated hotness
         c = c
             .drop_exec(
-                "SELECT * FROM q13 \
-                 WHERE story_id = ?",
+                "SELECT tags.* \
+                 FROM tags \
+                 INNER JOIN taggings \
+                 ON tags.id = taggings.tag_id \
+                 WHERE taggings.story_id = ?",
                 (story,),
             )
             .await?;
 
         c = c
             .drop_exec(
-                "SELECT * FROM q6 \
-                 WHERE story_id = ?",
+                "SELECT \
+                 comments.upvotes, \
+                 comments.downvotes \
+                 FROM comments \
+                 JOIN stories ON comments.story_id = stories.id \
+                 WHERE comments.story_id = ? \
+                 AND comments.user_id != stories.user_id",
                 (story,),
             )
             .await?;
 
         c = c
             .drop_exec(
-                "SELECT * FROM q11 \
-                 WHERE merged_story_id = ?",
+                "SELECT stories.id \
+                 FROM stories \
+                 WHERE stories.merged_story_id = ?",
                 (story,),
             )
             .await?;

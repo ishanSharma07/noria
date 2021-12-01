@@ -74,16 +74,21 @@ where
     // XXX: probably not drop here, but we know we have no merged stories
     c = c
         .drop_exec(
-            "SELECT id FROM q11 \
-             WHERE merged_story_id = ?",
+            "SELECT stories.id \
+             FROM stories \
+             WHERE stories.merged_story_id = ?",
             (story,),
         )
         .await?;
 
     let comments = c
         .prep_exec(
-            "SELECT * FROM q12 \
-             WHERE story_id = ?",
+            "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
+             FROM comments \
+             WHERE comments.story_id = ? \
+             ORDER BY \
+             saldo ASC, \
+             confidence DESC",
             (story,),
         )
         .await?;
@@ -121,7 +126,7 @@ where
         .join(", ");
     c = c
         .drop_query(&format!(
-            "SELECT * FROM q17 WHERE comment_id IN ({})",
+            "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
             comments
         ))
         .await?;
@@ -162,8 +167,9 @@ where
 
     let taggings = c
         .prep_exec(
-            "SELECT * FROM q26\
-             WHERE story_id = ?",
+            "SELECT taggings.* \
+             FROM taggings \
+             WHERE taggings.story_id = ?",
             (story,),
         )
         .await?;
@@ -182,7 +188,7 @@ where
         .join(", ");
     let c = c
         .drop_query(&format!(
-            "SELECT * FROM q29 WHERE id IN ({})",
+            "SELECT tags.* FROM tags WHERE tags.id IN ({})",
             tags
         ))
         .await?;
