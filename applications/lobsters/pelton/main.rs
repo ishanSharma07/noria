@@ -204,8 +204,8 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                         let c = c.await?;
                         let (mut c, user) = c
                             .first_exec::<_, _, my::Row>(
-                                "SELECT 1 AS `one` FROM users WHERE users.PII_username = '?'",
-                                (format!("user{}", acting_as.unwrap()),),
+                                "SELECT 1 AS `one` FROM users WHERE users.PII_username = ?",
+                                (format!("'user{}'", acting_as.unwrap()),),
                             )
                             .await?;
 
