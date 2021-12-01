@@ -21,3 +21,4 @@ CREATE TABLE suggested_titles ( id int NOT NULL PRIMARY KEY, story_id int, user_
 CREATE TABLE tag_filters ( id int NOT NULL PRIMARY KEY, created_at datetime NOT NULL, updated_at datetime NOT NULL, user_id int, tag_id int, FOREIGN KEY (user_id) REFERENCES users(id)) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE TABLE taggings ( id int NOT NULL PRIMARY KEY, story_id int NOT NULL, tag_id int NOT NULL, FOREIGN KEY (tag_id) REFERENCES tags(id), FOREIGN KEY (story_id) REFERENCES stories(id)) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE TABLE votes ( id int NOT NULL PRIMARY KEY, OWNER_user_id int NOT NULL, story_id int NOT NULL, comment_id int, vote int NOT NULL, reason varchar(1), FOREIGN KEY (OWNER_user_id) REFERENCES users(id), FOREIGN KEY (story_id) REFERENCES stories(id), FOREIGN KEY (comment_id) REFERENCES comments(id)) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
+INSERT INTO tags VALUES (1, 'test', NULL, 0, 0, 0, 0);
