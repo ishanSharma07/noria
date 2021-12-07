@@ -8,6 +8,7 @@ pub(crate) async fn handle<F>(
     acting_as: Option<UserId>,
     story: StoryId,
     v: Vote,
+    vote_uid: u16,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
@@ -19,7 +20,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (::std::str::from_utf8(&story[..]).unwrap(),),
+            (format!{"'{}'", ::std::str::from_utf8(&story[..]).unwrap()},),
         )
         .await?
         .collect_and_drop::<my::Row>()
@@ -48,9 +49,10 @@ where
     c = c
         .drop_exec(
             "INSERT INTO votes \
-             (OWNER_user_id, story_id, vote, comment_id, reason) \
-             VALUES (?, ?, ?, NULL, NULL)",
+             (id, OWNER_user_id, story_id, vote, comment_id, reason) \
+             VALUES (?, ?, ?, ?, NULL, NULL)",
             (
+                vote_uid,
                 user,
                 story,
                 match v {

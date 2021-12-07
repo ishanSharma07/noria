@@ -28,7 +28,7 @@ pub(crate) async fn notifications(mut c: my::Conn, uid: u32) -> Result<my::Conn,
             "SELECT keystores.* \
              FROM keystores \
              WHERE keystores.keyX = ?",
-            (format!("user:{}:unread_messages", uid),),
+            (format!("'user:{}:unread_messages'", uid),),
         )
         .await?;
 

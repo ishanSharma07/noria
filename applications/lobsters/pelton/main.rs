@@ -11,6 +11,9 @@ use std::task::{Context, Poll};
 use std::time;
 use tower_service::Service;
 use trawler::{LobstersRequest, TrawlerRequest};
+use rand::Rng;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 const PELTON_SCHEMA: &'static str = include_str!("db-schema/pelton.sql");
 
@@ -22,6 +25,11 @@ enum Variant {
 struct MysqlTrawlerBuilder {
     opts: my::OptsBuilder,
     variant: Variant,
+    stories_counter: Arc<Mutex<u16>>,
+    taggings_counter: Arc<Mutex<u16>>,
+    votes_counter: Arc<Mutex<u16>>,
+    ribbons_counter: Arc<Mutex<u16>>,
+    comments_counter: Arc<Mutex<u16>>,
 }
 
 enum MaybeConn {
@@ -34,6 +42,11 @@ struct MysqlTrawler {
     c: my::Pool,
     next_conn: MaybeConn,
     variant: Variant,
+    stories_counter: Arc<Mutex<u16>>,
+    taggings_counter: Arc<Mutex<u16>>,
+    votes_counter: Arc<Mutex<u16>>,
+    ribbons_counter: Arc<Mutex<u16>>,
+    comments_counter: Arc<Mutex<u16>>,
 }
 /*
 impl Drop for MysqlTrawler {
@@ -55,7 +68,11 @@ impl Service<bool> for MysqlTrawlerBuilder {
     fn call(&mut self, priming: bool) -> Self::Future {
         let orig_opts = self.opts.clone();
         let variant = self.variant;
-
+        let stories_counter = Arc::clone(&self.stories_counter);
+        let taggings_counter = Arc::clone(&self.taggings_counter);
+        let votes_counter = Arc::clone(&self.votes_counter);
+        let ribbons_counter = Arc::clone(&self.ribbons_counter);
+        let comments_counter = Arc::clone(&self.comments_counter);
         if priming {
             // we need a special conn for setup
             let mut opts = self.opts.clone();
@@ -98,6 +115,11 @@ impl Service<bool> for MysqlTrawlerBuilder {
                     c: my::Pool::new(orig_opts.clone()),
                     next_conn: MaybeConn::None,
                     variant,
+                    stories_counter: stories_counter,
+                    taggings_counter: taggings_counter,
+                    votes_counter: votes_counter,
+                    ribbons_counter: ribbons_counter,
+                    comments_counter: comments_counter,
                 })
             })
         } else {
@@ -106,6 +128,11 @@ impl Service<bool> for MysqlTrawlerBuilder {
                     c: my::Pool::new(orig_opts.clone()),
                     next_conn: MaybeConn::None,
                     variant,
+                    stories_counter: stories_counter,
+                    taggings_counter: taggings_counter,
+                    votes_counter: votes_counter,
+                    ribbons_counter: ribbons_counter,
+                    comments_counter: comments_counter,
                 })
             })
         }
@@ -150,6 +177,13 @@ impl Service<TrawlerRequest> for MysqlTrawler {
             }
             MaybeConn::Ready(c) => c,
         };
+        // This is to hack around the following error:
+        // `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+        let stories_counter_local = Arc::clone(&self.stories_counter);
+        let taggings_counter_local = Arc::clone(&self.taggings_counter);
+        let votes_counter_local = Arc::clone(&self.votes_counter);
+        let ribbons_counter_local = Arc::clone(&self.ribbons_counter);
+        let comments_counter_local = Arc::clone(&self.comments_counter);
         let c = futures_util::future::ready(Ok(c));
 
         // TODO: traffic management
@@ -231,20 +265,77 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Logout => Ok((c.await?, false)),
                     LobstersRequest::Story(id) => {
-                        endpoints::$module::story::handle(c, acting_as, id).await
+                        let ribbon_count;
+                        {
+                            // This scope is used to hack round the following:
+                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
+                            let mut counter = ribbons_counter_local.lock().unwrap();
+                            *counter += 1;
+                            ribbon_count = Into::<u16>::into(*counter);
+                            drop(counter);
+                        }
+                        endpoints::$module::story::handle(c, acting_as, id, ribbon_count).await
                     }
                     LobstersRequest::StoryVote(story, v) => {
-                        endpoints::$module::story_vote::handle(c, acting_as, story, v).await
+                        let vote_count;
+                        {
+                            // This scope is used to hack round the following:
+                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
+                            let mut counter = votes_counter_local.lock().unwrap();
+                            *counter += 1;
+                            vote_count = Into::<u16>::into(*counter);
+                            drop(counter);
+                        }
+                        endpoints::$module::story_vote::handle(c, acting_as, story, v, vote_count).await
                     }
                     LobstersRequest::CommentVote(comment, v) => {
-                        endpoints::$module::comment_vote::handle(c, acting_as, comment, v).await
+                        let vote_count;
+                        {
+                            // This scope is used to hack round the following:
+                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
+                            let mut counter = votes_counter_local.lock().unwrap();
+                            *counter += 1;
+                            vote_count = Into::<u16>::into(*counter);
+                            drop(counter);
+                        }
+                        endpoints::$module::comment_vote::handle(c, acting_as, comment, v, vote_count).await
                     }
                     LobstersRequest::Submit { id, title } => {
-                        endpoints::$module::submit::handle(c, acting_as, id, title, priming).await
+                        let story_count;
+                        let tagging_count;
+                        let vote_count;
+                        {
+                            // This scope is used to hack round the following:
+                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
+                            let mut counter = stories_counter_local.lock().unwrap();
+                            *counter += 1;
+                            story_count = Into::<u16>::into(*counter);
+                            counter = taggings_counter_local.lock().unwrap();
+                            *counter += 1;
+                            tagging_count = Into::<u16>::into(*counter);
+                            counter = votes_counter_local.lock().unwrap();
+                            *counter += 1;
+                            vote_count = Into::<u16>::into(*counter);
+                            drop(counter);
+                        }
+                        endpoints::$module::submit::handle(c, acting_as, id, title, priming, story_count, tagging_count, vote_count).await
                     }
                     LobstersRequest::Comment { id, story, parent } => {
+                        let comment_count;
+                        let vote_count;
+                        {
+                            // This scope is used to hack round the following:
+                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
+                            let mut counter =  comments_counter_local.lock().unwrap();
+                            *counter += 1;
+                            comment_count = Into::<u16>::into(*counter);
+                            counter = votes_counter_local.lock().unwrap();
+                            *counter += 1;
+                            vote_count = Into::<u16>::into(*counter);
+                            drop(counter);
+                        }
                         endpoints::$module::comment::handle(
-                            c, acting_as, id, story, parent, priming,
+                            c, acting_as, id, story, parent, priming, comment_count, vote_count
                         )
                         .await
                     }
@@ -253,6 +344,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
         }
 
         let variant = self.variant;
+
         Box::pin(async move {
             let inner = async move {
                 let (c, with_notifications) = match variant {
@@ -371,9 +463,24 @@ fn main() {
     opts.pool_options(my::PoolOptions::with_constraints(
         my::PoolConstraints::new(in_flight, in_flight).unwrap(),
     ));
+    // Atomic counter to generate ids for stories. This serves as a replacement for auto
+    // increment the id column.
+    // Preserve a parent counter so that it does not go out of scope.
+    let stories_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let taggings_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let votes_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let ribbons_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let comments_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+
+
     let s = MysqlTrawlerBuilder {
         variant,
         opts: opts.into(),
+        stories_counter: stories_counter,
+        taggings_counter: taggings_counter,
+        votes_counter: votes_counter,
+        ribbons_counter: ribbons_counter,
+        comments_counter: comments_counter,
     };
 
     wl.run(s, args.is_present("prime"));

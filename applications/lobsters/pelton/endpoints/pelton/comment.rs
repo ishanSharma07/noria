@@ -11,6 +11,8 @@ pub(crate) async fn handle<F>(
     story: StoryId,
     parent: Option<CommentId>,
     priming: bool,
+    comment_uid: u16,
+    vote_uid: u16,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
@@ -22,7 +24,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (::std::str::from_utf8(&story[..]).unwrap(),),
+            (format!{"'{}'", ::std::str::from_utf8(&story[..]).unwrap()},),
         )
         .await?;
     let story = story.unwrap();
@@ -46,7 +48,7 @@ where
                 "SELECT comments.* FROM comments \
                  WHERE comments.story_id = ? \
                  AND comments.short_id = ?",
-                (story, ::std::str::from_utf8(&parent[..]).unwrap()),
+                (story, format!{"'{}'", ::std::str::from_utf8(&parent[..]).unwrap()}),
             )
             .await?;
         c = x;
@@ -77,7 +79,7 @@ where
             .drop_exec(
                 "SELECT 1 AS `one`, short_id FROM comments \
                  WHERE comments.short_id = ?",
-                (::std::str::from_utf8(&id[..]).unwrap(),),
+                (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
             )
             .await?;
     }
@@ -90,50 +92,53 @@ where
     let q = if let Some((parent, thread)) = parent {
         c.prep_exec(
             "INSERT INTO comments \
-             (created_at, updated_at, short_id, story_id, \
+             (id, created_at, updated_at, short_id, story_id, \
              user_id, parent_comment_id, thread_id, \
              comment, upvotes, confidence, \
              markeddown_comment,\
              downvotes, is_deleted, is_moderated, is_from_email, hat_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)",
             (
-                now,
-                now,
-                ::std::str::from_utf8(&id[..]).unwrap(),
+                comment_uid,
+                format!{"'{}'", now},
+                format!{"'{}'", now},
+                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
                 story,
                 user,
                 parent,
                 thread,
-                "moar benchmarking", // lorem ipsum?
+                "'moar benchmarking'", // lorem ipsum?
                 1,
                 1,
-                "<p>moar benchmarking</p>\n",
+                "'<p>moar benchmarking</p>\n'",
             ),
         )
         .await?
     } else {
         c.prep_exec(
             "INSERT INTO comments \
-             (created_at, updated_at, short_id, story_id, \
+             (id, created_at, updated_at, short_id, story_id, \
              user_id, comment, upvotes, confidence, \
              markeddown_comment, downvotes, is_deleted, is_moderated, \
              is_from_email, hat_id, parent_comment_id, thread_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, NULL)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, NULL)",
             (
-                now,
-                now,
-                ::std::str::from_utf8(&id[..]).unwrap(),
+                comment_uid,
+                format!{"'{}'", now},
+                format!{"'{}'", now},
+                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
                 story,
                 user,
-                "moar benchmarking", // lorem ipsum?
+                "'moar benchmarking'", // lorem ipsum?
                 1,
                 1,
-                "<p>moar benchmarking</p>\n",
+                "'<p>moar benchmarking</p>\n'",
             ),
         )
         .await?
     };
-    let comment = q.last_insert_id().unwrap();
+    // let comment = q.last_insert_id().unwrap();
+    let comment = comment_uid;
     let mut c = q.drop_result().await?;
 
     if !priming {
@@ -152,9 +157,9 @@ where
     c = c
         .drop_exec(
             "INSERT INTO votes \
-             (OWNER_user_id, story_id, comment_id, vote, reason) \
-             VALUES (?, ?, ?, ?, NULL)",
-            (user, story, comment, 1),
+             (id, OWNER_user_id, story_id, comment_id, vote, reason) \
+             VALUES (?, ?, ?, ?, ?, NULL)",
+            (vote_uid, user, story, comment, 1),
         )
         .await?;
 
@@ -236,13 +241,13 @@ where
         .await?;
 
     let key = format!("user:{}:comments_posted", user);
-    c = c
-        .drop_exec(
-            "REPLACE INTO keystores (keyX, valueX) \
-             VALUES (?, ?)",
-            (key, 1),
-        )
-        .await?;
+    // c = c
+    //     .drop_exec(
+    //         "REPLACE INTO keystores (keyX, valueX) \
+    //          VALUES (?, ?)",
+    //         (key, 1),
+    //     )
+    //     .await?;
 
     Ok((c, false))
 }

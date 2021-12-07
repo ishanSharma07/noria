@@ -9,6 +9,7 @@ pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
     id: StoryId,
+    read_ribbon_uid: u16,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
@@ -20,7 +21,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (::std::str::from_utf8(&id[..]).unwrap(),),
+            (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
         )
         .await?
         .collect_and_drop::<my::Row>()
@@ -53,9 +54,9 @@ where
             None => {
                 x.drop_exec(
                     "INSERT INTO read_ribbons \
-                         (created_at, updated_at, user_id, story_id, is_following) \
-                         VALUES (?, ?, ?, ?, 1)",
-                    (now, now, uid, story),
+                         (id, created_at, updated_at, user_id, story_id, is_following) \
+                         VALUES (?, ?, ?, ?, ?, 1)",
+                    (read_ribbon_uid, format!{"'{}'", now}, format!{"'{}'", now}, uid, story),
                 )
                 .await?
             }
@@ -64,7 +65,7 @@ where
                     "UPDATE read_ribbons \
                          SET read_ribbons.updated_at = ? \
                          WHERE read_ribbons.id = ?",
-                    (now, rr.get::<u32, _>("id").unwrap()),
+                    (format!{"'{}'", now}, rr.get::<u32, _>("id").unwrap()),
                 )
                 .await?
             }

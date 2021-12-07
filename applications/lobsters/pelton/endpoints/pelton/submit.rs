@@ -10,11 +10,14 @@ pub(crate) async fn handle<F>(
     id: StoryId,
     title: String,
     priming: bool,
+    story_uid: u16,
+    taggings_uid: u16,
+    votes_uid: u16,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    let c = c.await?;
+    let mut c = c.await?;
     let user = acting_as.unwrap();
 
     // check that tags are active
@@ -24,7 +27,9 @@ where
              WHERE tags.inactive = 0 AND tags.tag IN ('test')",
         )
         .await?;
-    let tag = tag.unwrap().get::<u32, _>("id");
+    let tag = tag.unwrap();
+    let tag = tag.get::<u32, _>("id");
+    let tag_id = tag.unwrap();
 
     if !priming {
         // check that story id isn't already assigned
@@ -32,7 +37,7 @@ where
             .drop_exec(
                 "SELECT 1 AS `one` FROM stories \
                  WHERE stories.short_id = ?",
-                (::std::str::from_utf8(&id[..]).unwrap(),),
+                (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
             )
             .await?;
     }
@@ -57,46 +62,48 @@ where
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
+    // let mut rng = rand::thread_rng();
+    let story = story_uid;
     let q = c
         .prep_exec(
             "INSERT INTO stories \
-             (created_at, user_id, title, \
+             (id, created_at, user_id, title, \
              description, short_id, upvotes, hotness, \
              markeddown_description,\
              url, is_expired, downvotes, is_moderated, comments_count,\
              story_cache, merged_story_id, unavailable_at, twitter_id, user_is_author) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
-            (
-                chrono::Local::now().naive_local(),
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
+            (   story,
+                format!("'{}'", chrono::Local::now().naive_local()),
                 user,
-                title,
-                "to infinity", // lorem ipsum?
-                ::std::str::from_utf8(&id[..]).unwrap(),
+                format!{"'{}'", title},
+                "'to infinity'", // lorem ipsum?
+                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
                 1,
                 19217,
-                "<p>to infinity</p>\n",
+                "'<p>to infinity</p>'",
             ),
         )
         .await?;
-    let story = q.last_insert_id().unwrap();
+    // let _story_unused = q.last_insert_id().unwrap();
     let mut c = q.drop_result().await?;
 
     c = c
         .drop_exec(
-            "INSERT INTO taggings (story_id, tag_id) \
-             VALUES (?, ?)",
-            (story, tag),
+            "INSERT INTO taggings (id, story_id, tag_id) \
+             VALUES (?, ?, ?)",
+            (taggings_uid, story, tag_id),
         )
         .await?;
 
     let key = format!("user:{}:stories_submitted", user);
-    c = c
-        .drop_exec(
-            "REPLACE INTO keystores (keyX, valueX) \
-             VALUES (?, ?)",
-            (key, 1),
-        )
-        .await?;
+    // c = c
+    //     .drop_exec(
+    //         "REPLACE INTO keystores (keyX, valueX) \
+    //          VALUES (?, ?)",
+    //         (key, 1),
+    //     )
+    //     .await?;
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);
@@ -105,7 +112,7 @@ where
                 "SELECT keystores.* \
                  FROM keystores \
                  WHERE keystores.keyX = ?",
-                (key,),
+                (format!("'{}'", key),),
             )
             .await?;
 
@@ -123,9 +130,9 @@ where
     c = c
         .drop_exec(
             "INSERT INTO votes \
-             (OWNER_user_id, story_id, vote, comment_id, reason) \
-             VALUES (?, ?, ?, NULL, NULL)",
-            (user, story, 1),
+             (id, OWNER_user_id, story_id, vote, comment_id, reason) \
+             VALUES (?, ?, ?, ?, NULL, NULL)",
+            (votes_uid, user, story, 1),
         )
         .await?;
 

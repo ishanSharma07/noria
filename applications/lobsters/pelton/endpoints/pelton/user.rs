@@ -17,7 +17,7 @@ where
         .first_exec::<_, _, my::Row>(
             "SELECT users.* FROM users \
              WHERE users.PII_username = ?",
-            (format!("{}", uid),),
+            (format!("'{}'", uid),),
         )
         .await?;
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
@@ -41,7 +41,7 @@ where
             "SELECT keystores.* \
              FROM keystores \
              WHERE keystores.keyX = ?",
-            (format!("user:{}:stories_submitted", uid),),
+            (format!("'user:{}:stories_submitted'", uid),),
         )
         .await?;
 
@@ -50,7 +50,7 @@ where
             "SELECT keystores.* \
              FROM keystores \
              WHERE keystores.keyX = ?",
-            (format!("user:{}:comments_posted", uid),),
+            (format!("'user:{}:comments_posted'", uid),),
         )
         .await?;
 

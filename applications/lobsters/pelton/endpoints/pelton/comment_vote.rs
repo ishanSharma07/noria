@@ -8,6 +8,7 @@ pub(crate) async fn handle<F>(
     acting_as: Option<UserId>,
     comment: StoryId,
     v: Vote,
+    vote_uid: u16,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
@@ -19,7 +20,7 @@ where
             "SELECT comments.* \
              FROM comments \
              WHERE comments.short_id = ?",
-            (::std::str::from_utf8(&comment[..]).unwrap(),),
+            (format!{"'{}'", ::std::str::from_utf8(&comment[..]).unwrap()},),
         )
         .await?;
 
@@ -49,10 +50,11 @@ where
     c = c
         .drop_exec(
             "INSERT INTO votes \
-             (OWNER_user_id, story_id, comment_id, vote, reason) \
+             (id, OWNER_user_id, story_id, comment_id, vote, reason) \
              VALUES \
-             (?, ?, ?, ?, NULL)",
+             (?, ?, ?, ?, ?, NULL)",
             (
+                vote_uid,
                 user,
                 sid,
                 comment,
