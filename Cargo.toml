@@ -13,4 +13,3 @@ debug=true
 # optional -- just a perf optimization
 # comment this out if you want cargo doc to work!
 tokio-tower = { git = "https://github.com/tower-rs/tokio-tower.git", branch = "no-box" }
-trawler = { git = "https://github.com/ms705/trawler.git" }
