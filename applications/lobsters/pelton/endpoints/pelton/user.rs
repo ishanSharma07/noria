@@ -25,12 +25,12 @@ where
     // most popular tag
     c = c
         .drop_exec(
-            "SELECT tags.id, count(*) AS `count` FROM tags \
+            "SELECT tags.id, stories.user_id, count(*) AS `count` FROM tags \
              INNER JOIN taggings ON tags.id = taggings.tag_id \
              INNER JOIN stories ON taggings.story_id = stories.id \
              WHERE tags.inactive = 0 \
              AND stories.user_id = ? \
-             GROUP BY tags.id \
+             GROUP BY tags.id, stories.user_id \
              ORDER BY `count` DESC LIMIT 1",
             (uid,),
         )
@@ -56,7 +56,7 @@ where
 
     c = c
         .drop_exec(
-            "SELECT 1 AS `one` FROM hats \
+            "SELECT 1 AS `one`, hats.OWNER_user_id FROM hats \
              WHERE hats.OWNER_user_id = ? LIMIT 1",
             (uid,),
         )

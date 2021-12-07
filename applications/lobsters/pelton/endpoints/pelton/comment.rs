@@ -175,11 +175,11 @@ where
     // why are these ordered?
     let (mut c, count) = c
         .prep_exec(
-            "SELECT comments.* \
+            "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
              FROM comments \
              WHERE comments.story_id = ? \
              ORDER BY \
-             (upvotes - downvotes) < 0 ASC, \
+             saldo ASC, \
              confidence DESC",
             (story,),
         )
@@ -241,13 +241,13 @@ where
         .await?;
 
     let key = format!("user:{}:comments_posted", user);
-    // c = c
-    //     .drop_exec(
-    //         "REPLACE INTO keystores (keyX, valueX) \
-    //          VALUES (?, ?)",
-    //         (key, 1),
-    //     )
-    //     .await?;
+    c = c
+        .drop_exec(
+            "REPLACE INTO keystores (keyX, valueX) \
+             VALUES (?, ?)",
+            (key, 1),
+        )
+        .await?;
 
     Ok((c, false))
 }

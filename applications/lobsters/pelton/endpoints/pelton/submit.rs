@@ -96,14 +96,14 @@ where
         )
         .await?;
 
-    let key = format!("user:{}:stories_submitted", user);
-    // c = c
-    //     .drop_exec(
-    //         "REPLACE INTO keystores (keyX, valueX) \
-    //          VALUES (?, ?)",
-    //         (key, 1),
-    //     )
-    //     .await?;
+    let key = format!("'user:{}:stories_submitted'", user);
+    c = c
+        .drop_exec(
+            "REPLACE INTO keystores (keyX, valueX) \
+             VALUES (?, ?)",
+            (key, 1),
+        )
+        .await?;
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);

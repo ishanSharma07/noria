@@ -75,7 +75,7 @@ where
     // XXX: probably not drop here, but we know we have no merged stories
     c = c
         .drop_exec(
-            "SELECT stories.id \
+            "SELECT stories.id, stories.merged_story_id \
              FROM stories \
              WHERE stories.merged_story_id = ?",
             (story,),
