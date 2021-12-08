@@ -14,12 +14,12 @@ where
 {
     let c = c.await?;
     let comments = c
-        .query("SELECT comments.* \
+        .prep_exec("SELECT comments.* \
          FROM comments \
          WHERE comments.is_deleted = 0 \
          AND comments.is_moderated = 0 \
          ORDER BY id DESC \
-         LIMIT 40")
+         LIMIT 40", (), )
         .await?;
 
     let (mut c, (comments, users, stories)) = comments
