@@ -165,7 +165,7 @@ where
 
     c = c
         .drop_exec(
-            "SELECT stories.id \
+            "SELECT stories.id, stories.merged_story_id \
              FROM stories \
              WHERE stories.merged_story_id = ?",
             (story,),
@@ -222,7 +222,7 @@ where
 
         c = c
             .drop_exec(
-                "SELECT stories.id \
+                "SELECT stories.id, stories.merged_story_id \
                  FROM stories \
                  WHERE stories.merged_story_id = ?",
                 (story,),
@@ -240,7 +240,7 @@ where
         )
         .await?;
 
-    let key = format!("user:{}:comments_posted", user);
+    let key = format!("'user:{}:comments_posted'", user);
     c = c
         .drop_exec(
             "REPLACE INTO keystores (keyX, valueX) \
