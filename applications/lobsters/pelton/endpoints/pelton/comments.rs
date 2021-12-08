@@ -42,7 +42,7 @@ where
         c = c
             .drop_exec(
                 &format!(
-                    "SELECT 1 FROM hidden_stories \
+                    "SELECT 1, user_id, story_id FROM hidden_stories \
                      WHERE hidden_stories.user_id = ? \
                      AND hidden_stories.story_id IN ({})",
                     params
