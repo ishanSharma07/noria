@@ -11,9 +11,10 @@ use std::task::{Context, Poll};
 use std::time;
 use tower_service::Service;
 use trawler::{LobstersRequest, TrawlerRequest};
-use rand::Rng;
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
+// use rand::Rng;
+use std::sync::{Arc};
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 
 const PELTON_SCHEMA: &'static str = include_str!("db-schema/pelton.sql");
 
@@ -25,11 +26,11 @@ enum Variant {
 struct MysqlTrawlerBuilder {
     opts: my::OptsBuilder,
     variant: Variant,
-    stories_counter: Arc<Mutex<u16>>,
-    taggings_counter: Arc<Mutex<u16>>,
-    votes_counter: Arc<Mutex<u16>>,
-    ribbons_counter: Arc<Mutex<u16>>,
-    comments_counter: Arc<Mutex<u16>>,
+    stories_counter: Arc<AtomicU32>,
+    taggings_counter: Arc<AtomicU32>,
+    votes_counter: Arc<AtomicU32>,
+    ribbons_counter: Arc<AtomicU32>,
+    comments_counter: Arc<AtomicU32>,
 }
 
 enum MaybeConn {
@@ -42,11 +43,11 @@ struct MysqlTrawler {
     c: my::Pool,
     next_conn: MaybeConn,
     variant: Variant,
-    stories_counter: Arc<Mutex<u16>>,
-    taggings_counter: Arc<Mutex<u16>>,
-    votes_counter: Arc<Mutex<u16>>,
-    ribbons_counter: Arc<Mutex<u16>>,
-    comments_counter: Arc<Mutex<u16>>,
+    stories_counter: Arc<AtomicU32>,
+    taggings_counter: Arc<AtomicU32>,
+    votes_counter: Arc<AtomicU32>,
+    ribbons_counter: Arc<AtomicU32>,
+    comments_counter: Arc<AtomicU32>,
 }
 /*
 impl Drop for MysqlTrawler {
@@ -179,11 +180,11 @@ impl Service<TrawlerRequest> for MysqlTrawler {
         };
         // This is to hack around the following error:
         // `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-        let stories_counter_local = Arc::clone(&self.stories_counter);
-        let taggings_counter_local = Arc::clone(&self.taggings_counter);
-        let votes_counter_local = Arc::clone(&self.votes_counter);
-        let ribbons_counter_local = Arc::clone(&self.ribbons_counter);
-        let comments_counter_local = Arc::clone(&self.comments_counter);
+        let stories_counter_local = self.stories_counter.clone();
+        let taggings_counter_local = self.taggings_counter.clone();
+        let votes_counter_local = self.votes_counter.clone();
+        let ribbons_counter_local = self.ribbons_counter.clone();
+        let comments_counter_local = self.comments_counter.clone();
         let c = futures_util::future::ready(Ok(c));
 
         // TODO: traffic management
@@ -265,75 +266,26 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                     }
                     LobstersRequest::Logout => Ok((c.await?, false)),
                     LobstersRequest::Story(id) => {
-                        let ribbon_count;
-                        {
-                            // This scope is used to hack round the following:
-                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
-                            let mut counter = ribbons_counter_local.lock().unwrap();
-                            *counter += 1;
-                            ribbon_count = Into::<u16>::into(*counter);
-                            drop(counter);
-                        }
+                        let ribbon_count = ribbons_counter_local.fetch_add(1, Ordering::SeqCst);
                         endpoints::$module::story::handle(c, acting_as, id, ribbon_count).await
                     }
                     LobstersRequest::StoryVote(story, v) => {
-                        let vote_count;
-                        {
-                            // This scope is used to hack round the following:
-                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
-                            let mut counter = votes_counter_local.lock().unwrap();
-                            *counter += 1;
-                            vote_count = Into::<u16>::into(*counter);
-                            drop(counter);
-                        }
+                        let vote_count = votes_counter_local.fetch_add(1, Ordering::SeqCst);
                         endpoints::$module::story_vote::handle(c, acting_as, story, v, vote_count).await
                     }
                     LobstersRequest::CommentVote(comment, v) => {
-                        let vote_count;
-                        {
-                            // This scope is used to hack round the following:
-                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
-                            let mut counter = votes_counter_local.lock().unwrap();
-                            *counter += 1;
-                            vote_count = Into::<u16>::into(*counter);
-                            drop(counter);
-                        }
+                        let vote_count = votes_counter_local.fetch_add(1, Ordering::SeqCst);
                         endpoints::$module::comment_vote::handle(c, acting_as, comment, v, vote_count).await
                     }
                     LobstersRequest::Submit { id, title } => {
-                        let story_count;
-                        let tagging_count;
-                        let vote_count;
-                        {
-                            // This scope is used to hack round the following:
-                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
-                            let mut counter = stories_counter_local.lock().unwrap();
-                            *counter += 1;
-                            story_count = Into::<u16>::into(*counter);
-                            counter = taggings_counter_local.lock().unwrap();
-                            *counter += 1;
-                            tagging_count = Into::<u16>::into(*counter);
-                            counter = votes_counter_local.lock().unwrap();
-                            *counter += 1;
-                            vote_count = Into::<u16>::into(*counter);
-                            drop(counter);
-                        }
+                        let story_count = stories_counter_local.fetch_add(1, Ordering::SeqCst);
+                        let tagging_count = taggings_counter_local.fetch_add(1, Ordering::SeqCst);
+                        let vote_count = votes_counter_local.fetch_add(1, Ordering::SeqCst);
                         endpoints::$module::submit::handle(c, acting_as, id, title, priming, story_count, tagging_count, vote_count).await
                     }
                     LobstersRequest::Comment { id, story, parent } => {
-                        let comment_count;
-                        let vote_count;
-                        {
-                            // This scope is used to hack round the following:
-                            // `std::sync::MutexGuard<'_, u16>` cannot be sent between threads safely
-                            let mut counter =  comments_counter_local.lock().unwrap();
-                            *counter += 1;
-                            comment_count = Into::<u16>::into(*counter);
-                            counter = votes_counter_local.lock().unwrap();
-                            *counter += 1;
-                            vote_count = Into::<u16>::into(*counter);
-                            drop(counter);
-                        }
+                        let comment_count = comments_counter_local.fetch_add(1, Ordering::SeqCst);
+                        let vote_count = votes_counter_local.fetch_add(1, Ordering::SeqCst);
                         endpoints::$module::comment::handle(
                             c, acting_as, id, story, parent, priming, comment_count, vote_count
                         )
@@ -466,11 +418,11 @@ fn main() {
     // Atomic counter to generate ids for stories. This serves as a replacement for auto
     // increment the id column.
     // Preserve a parent counter so that it does not go out of scope.
-    let stories_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
-    let taggings_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
-    let votes_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
-    let ribbons_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
-    let comments_counter: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let stories_counter = Arc::new(AtomicU32::new(0));
+    let taggings_counter = Arc::new(AtomicU32::new(0));
+    let votes_counter = Arc::new(AtomicU32::new(0));
+    let ribbons_counter = Arc::new(AtomicU32::new(0));
+    let comments_counter = Arc::new(AtomicU32::new(0));
 
 
     let s = MysqlTrawlerBuilder {

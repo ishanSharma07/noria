@@ -10,9 +10,9 @@ pub(crate) async fn handle<F>(
     id: StoryId,
     title: String,
     priming: bool,
-    story_uid: u16,
-    taggings_uid: u16,
-    votes_uid: u16,
+    story_uid: u32,
+    taggings_uid: u32,
+    votes_uid: u32,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,

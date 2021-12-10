@@ -9,7 +9,7 @@ pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
     id: StoryId,
-    read_ribbon_uid: u16,
+    read_ribbon_uid: u32,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,

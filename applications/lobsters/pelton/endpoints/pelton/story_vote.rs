@@ -8,7 +8,7 @@ pub(crate) async fn handle<F>(
     acting_as: Option<UserId>,
     story: StoryId,
     v: Vote,
-    vote_uid: u16,
+    vote_uid: u32,
 ) -> Result<(my::Conn, bool), my::error::Error>
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
