@@ -120,16 +120,18 @@ where
 
     // get comment votes
     // XXX: why?!
-    let comments = comments
-        .into_iter()
-        .map(|id| format!("{}", id))
-        .collect::<Vec<_>>()
-        .join(", ");
+    // let comments = comments
+    //     .into_iter()
+    //     .map(|id| format!("{}", id))
+    //     .collect::<Vec<_>>()
+    //     .join(", ");
+    let comments_params = comments.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let comments: Vec<&u32> = comments.iter().map(|s| s as &_).collect();
     c = c
-        .drop_query(&format!(
+        .drop_exec(&format!(
             "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
-            comments
-        ))
+            comments_params
+        ), comments)
         .await?;
 
     // NOTE: lobste.rs here fetches the user list again. unclear why?

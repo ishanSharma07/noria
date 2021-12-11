@@ -41,6 +41,9 @@ where
         .collect::<Vec<_>>()
         .join(",");
 
+    let stories_in_params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let stories_in_values: Vec<&u32> = stories.iter().map(|s| s as &_).collect();
+
     if let Some(uid) = acting_as {
         let x = c
             .drop_exec(
@@ -67,20 +70,22 @@ where
         c = x;
 
         if !tags.is_empty() {
-            let tags = tags
-                .into_iter()
-                .map(|id| format!("{}", id))
-                .collect::<Vec<_>>()
-                .join(",");
+            // let tags = tags
+            //     .into_iter()
+            //     .map(|id| format!("{}", id))
+            //     .collect::<Vec<_>>()
+            //     .join(",");
+            let tags_params = tags.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let all_values: Vec<&u32> = tags.iter().map(|s| s as &_).chain(stories_in_values.iter().map(|s| s as &_)).collect();
 
             c = c
-                .drop_query(&format!(
+                .drop_exec(&format!(
                     "SELECT taggings.story_id \
                      FROM taggings \
                      WHERE taggings.story_id IN ({}) \
                      AND taggings.tag_id IN ({})",
-                    stories_in, tags
-                ))
+                    stories_in_params, tags_params
+                ), all_values)
                 .await?;
         }
     }
@@ -99,30 +104,30 @@ where
         .await?;
 
     c = c
-        .drop_query(&format!(
+        .drop_exec(&format!(
             "SELECT suggested_titles.* \
              FROM suggested_titles \
              WHERE suggested_titles.story_id IN ({})",
-            stories_in
-        ))
+            stories_in_params
+        ), &stories_in_values)
         .await?;
 
 
     c = c
-        .drop_query(&format!(
+        .drop_exec(&format!(
             "SELECT suggested_taggings.* \
              FROM suggested_taggings \
              WHERE suggested_taggings.story_id IN ({})",
-            stories_in
-        ))
+            stories_in_params
+        ), &stories_in_values)
         .await?;
 
     let taggings = c
-        .query( &format!(
+        .prep_exec( &format!(
             "SELECT taggings.* FROM taggings \
              WHERE taggings.story_id IN ({})",
-            stories_in
-        ))
+            stories_in_params
+        ), &stories_in_values)
         .await?;
 
     let (mut c, tags) = taggings

@@ -65,18 +65,21 @@ where
         ))
         .await?;
 
-    let stories = stories
-        .into_iter()
-        .map(|id| format!("{}", id))
-        .collect::<Vec<_>>()
-        .join(",");
+    // let stories = stories
+    //     .into_iter()
+    //     .map(|id| format!("{}", id))
+    //     .collect::<Vec<_>>()
+    //     .join(",");
+
+    let story_params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let stories: Vec<&u32> = stories.iter().map(|s| s as &_).collect();
 
     let stories = c
-        .query(&format!(
+        .prep_exec(&format!(
             "SELECT stories.* FROM stories \
              WHERE stories.id IN ({})",
-            stories
-        ))
+            story_params
+        ), stories)
         .await?;
 
     let (mut c, authors) = stories
