@@ -246,6 +246,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
 
                         if user.is_none() {
                             let uid = acting_as.unwrap();
+                            println!("[INSERT][main, user] id: {}", uid);
                             c = c
                                 .drop_exec(
                                     "INSERT INTO users \
