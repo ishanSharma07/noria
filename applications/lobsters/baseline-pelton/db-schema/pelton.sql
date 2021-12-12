@@ -1,5 +1,5 @@
 CREATE TABLE users ( id int NOT NULL PRIMARY KEY, PII_username varchar(50), email varchar(100), password_digest varchar(75), created_at datetime, is_admin int, password_reset_token varchar(75), session_token varchar(75) NOT NULL, about text, invited_by_user_id int, is_moderator int, pushover_mentions int, rss_token varchar(75), mailing_list_token varchar(75), mailing_list_mode int, karma int NOT NULL, banned_at datetime, banned_by_user_id int, banned_reason varchar(200), deleted_at datetime, disabled_invite_at datetime, disabled_invite_by_user_id int, disabled_invite_reason varchar(200), settings text) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
-CREATE UNIQUE INDEX users_email ON users (email);
+CREATE INDEX users_email ON users (email);
 CREATE INDEX users_banned_by ON users (banned_by_user_id);
 CREATE INDEX users_invited_by ON users (invited_by_user_id);
 CREATE INDEX users_disabled_invited_by ON users (disabled_invite_by_user_id);
@@ -10,7 +10,7 @@ CREATE TABLE hat_requests ( id int NOT NULL PRIMARY KEY, created_at datetime, up
 CREATE INDEX hat_requests_user_id ON hat_requests (user_id);
 CREATE TABLE hats ( id int NOT NULL PRIMARY KEY, created_at datetime, updated_at datetime, OWNER_user_id int, OWNER_granted_by_user_id int, hat varchar(255) NOT NULL, link varchar(255), modlog_use int, doffed_at datetime) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE INDEX hats_user_id ON hats (OWNER_user_id);
-CREATE INDEX hats_user_id ON hats (OWNER_granted_by_user_id);
+CREATE INDEX hats_granted_by_user_id ON hats (OWNER_granted_by_user_id);
 CREATE TABLE hidden_stories ( id int NOT NULL PRIMARY KEY, user_id int, story_id int) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE INDEX hidden_stories_user_id ON hidden_stories (user_id);
 CREATE INDEX hidden_stories_story_id ON hidden_stories (story_id);
@@ -42,8 +42,8 @@ CREATE INDEX suggested_titles_user_id ON suggested_titles (user_id);
 CREATE TABLE tag_filters ( id int NOT NULL PRIMARY KEY, created_at datetime NOT NULL, updated_at datetime NOT NULL, user_id int, tag_id int) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE INDEX tag_filters_user_id ON tag_filters (user_id);
 CREATE TABLE taggings ( id int NOT NULL PRIMARY KEY, story_id int NOT NULL, tag_id int NOT NULL) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
-CREATE INDEX taggings_story_id ON taggins (story_id);
-CREATE INDEX taggings_tag_id ON taggins (tag_id);
+CREATE INDEX taggings_story_id ON taggings (story_id);
+CREATE INDEX taggings_tag_id ON taggings (tag_id);
 CREATE TABLE votes ( id int NOT NULL PRIMARY KEY, OWNER_user_id int NOT NULL, story_id int NOT NULL, comment_id int, vote int NOT NULL, reason varchar(1)) ENGINE=ROCKSDB DEFAULT CHARSET=utf8;
 CREATE INDEX votes_user_id ON votes (OWNER_user_id);
 CREATE INDEX votes_story_id ON votes (story_id);
