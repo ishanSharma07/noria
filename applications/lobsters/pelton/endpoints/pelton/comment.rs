@@ -77,7 +77,7 @@ where
         // check that short id is available
         c = c
             .drop_exec(
-                "SELECT 1 AS `one`, short_id FROM comments \
+                "SELECT 1 AS `one`, comments.short_id FROM comments \
                  WHERE comments.short_id = ?",
                 (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
             )

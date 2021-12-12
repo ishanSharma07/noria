@@ -35,7 +35,7 @@ where
         // check that story id isn't already assigned
         c = c
             .drop_exec(
-                "SELECT 1 AS `one` FROM stories \
+                "SELECT 1 AS `one`, stories.short_id FROM stories \
                  WHERE stories.short_id = ?",
                 (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
             )
