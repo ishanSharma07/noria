@@ -47,6 +47,7 @@ where
 
     // NOTE: MySQL technically does everything inside this and_then in a transaction,
     // but let's be nice to it
+    println!("[INSERT][comment_vote, votes] id: {}", vote_uid);
     c = c
         .drop_exec(
             "INSERT INTO votes \

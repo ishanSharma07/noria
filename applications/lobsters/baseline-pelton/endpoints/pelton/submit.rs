@@ -64,6 +64,7 @@ where
     // but let's be nice to it
     // let mut rng = rand::thread_rng();
     let story = story_uid;
+    println!("[INSERT][submit, stories] id: {}", story);
     let q = c
         .prep_exec(
             "INSERT INTO stories \
@@ -88,6 +89,7 @@ where
     // let _story_unused = q.last_insert_id().unwrap();
     let mut c = q.drop_result().await?;
 
+    println!("[INSERT][submit, taggings] id: {}", taggings_uid);
     c = c
         .drop_exec(
             "INSERT INTO taggings (id, story_id, tag_id) \
@@ -127,6 +129,7 @@ where
             .await?;
     }
 
+    println!("[INSERT][submit, votes] id: {}", votes_uid);
     c = c
         .drop_exec(
             "INSERT INTO votes \

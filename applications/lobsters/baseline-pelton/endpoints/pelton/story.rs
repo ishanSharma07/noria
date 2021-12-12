@@ -52,6 +52,7 @@ where
         let now = chrono::Local::now().naive_local();
         c = match rr {
             None => {
+                println!("[INSERT][story, read_ribbons] id: {}", read_ribbon_uid);
                 x.drop_exec(
                     "INSERT INTO read_ribbons \
                          (id, created_at, updated_at, user_id, story_id, is_following) \

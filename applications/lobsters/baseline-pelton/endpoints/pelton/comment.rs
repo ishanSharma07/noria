@@ -90,6 +90,7 @@ where
     // but let's be nice to it
     let now = chrono::Local::now().naive_local();
     let q = if let Some((parent, thread)) = parent {
+        println!("[INSERT][comment, comments1] id: {}", comment_uid);
         c.prep_exec(
             "INSERT INTO comments \
              (id, created_at, updated_at, short_id, story_id, \
@@ -115,6 +116,7 @@ where
         )
         .await?
     } else {
+        println!("[INSERT][comment, comments2] id: {}", comment_uid);
         c.prep_exec(
             "INSERT INTO comments \
              (id, created_at, updated_at, short_id, story_id, \
@@ -154,6 +156,7 @@ where
             .await?;
     }
 
+    println!("[INSERT][comment, votes] id: {}", vote_uid);
     c = c
         .drop_exec(
             "INSERT INTO votes \

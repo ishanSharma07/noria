@@ -425,11 +425,11 @@ fn main() {
     // Atomic counter to generate ids for stories. This serves as a replacement for auto
     // increment the id column.
     // Preserve a parent counter so that it does not go out of scope.
-    let stories_counter = Arc::new(AtomicU32::new(0));
-    let taggings_counter = Arc::new(AtomicU32::new(0));
-    let votes_counter = Arc::new(AtomicU32::new(0));
-    let ribbons_counter = Arc::new(AtomicU32::new(0));
-    let comments_counter = Arc::new(AtomicU32::new(0));
+    let stories_counter = Arc::new(AtomicU32::new(1000000));
+    let taggings_counter = Arc::new(AtomicU32::new(1000000));
+    let votes_counter = Arc::new(AtomicU32::new(1000000));
+    let ribbons_counter = Arc::new(AtomicU32::new(1000000));
+    let comments_counter = Arc::new(AtomicU32::new(1000000));
 
 
     let s = MysqlTrawlerBuilder {
