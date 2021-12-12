@@ -131,7 +131,7 @@ where
         .drop_exec(
             "SELECT \
              comments.upvotes, \
-             comments.downvotes \
+             comments.downvotes, comments.story_id \
              FROM comments \
              JOIN stories ON comments.story_id = stories.id \
              WHERE comments.story_id = ? \
