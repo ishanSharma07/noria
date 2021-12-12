@@ -17,7 +17,7 @@ where
         .first_exec::<_, _, my::Row>(
             "SELECT users.* FROM users \
              WHERE users.PII_username = ?",
-            (format!("{}", uid),),
+            (format!("user{}", uid),),
         )
         .await?;
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
