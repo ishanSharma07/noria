@@ -92,7 +92,7 @@ where
 
             c = c
                 .drop_exec(&format!(
-                    "SELECT taggings.story_id \
+                    "SELECT taggings.story_id, taggings.tag_id \
                      FROM taggings \
                      WHERE taggings.story_id IN ({}) \
                      AND taggings.tag_id IN ({})",

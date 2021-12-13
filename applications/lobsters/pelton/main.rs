@@ -90,27 +90,27 @@ impl Service<bool> for MysqlTrawlerBuilder {
             // let db_create = format!("CREATE DATABASE {}", db);
             // let db_use = format!("USE {}", db);
             Box::pin(async move {
-                let mut c = my::Conn::new(opts).await?;
+                // let mut c = my::Conn::new(opts).await?;
                 // c = c.drop_query(&db_drop).await?;
                 // c = c.drop_query(&db_create).await?;
                 // c = c.drop_query(&db_use).await?;
-                let schema = match variant {
-                    Variant::Pelton => PELTON_SCHEMA,
-                };
-                let mut current_q = String::new();
-                for line in schema.lines() {
-                    if line.starts_with("--") || line.is_empty() {
-                        continue;
-                    }
-                    if !current_q.is_empty() {
-                        current_q.push_str(" ");
-                    }
-                    current_q.push_str(line);
-                    if current_q.ends_with(';') {
-                        c = c.drop_query(&current_q).await?;
-                        current_q.clear();
-                    }
-                }
+                // let schema = match variant {
+                //     Variant::Pelton => PELTON_SCHEMA,
+                // };
+                // let mut current_q = String::new();
+                // for line in schema.lines() {
+                //     if line.starts_with("--") || line.is_empty() {
+                //         continue;
+                //     }
+                //     if !current_q.is_empty() {
+                //         current_q.push_str(" ");
+                //     }
+                //     current_q.push_str(line);
+                //     if current_q.ends_with(';') {
+                //         c = c.drop_query(&current_q).await?;
+                //         current_q.clear();
+                //     }
+                // }
 
                 Ok(MysqlTrawler {
                     c: my::Pool::new(orig_opts.clone()),
