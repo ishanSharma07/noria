@@ -120,6 +120,12 @@ name = "lobsters-baseline-pelton"
 path = "lobsters/baseline-pelton/main.rs"
 doc = false
 
+[[bin]]
+name = "lobsters-memcached"
+path = "lobsters/memcached/main.rs"
+doc = false
+
+
 
 #[[bin]]
 #name = "security-mysql"
