@@ -21,7 +21,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
+            (format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},),
         )
         .await?
         .collect_and_drop::<my::Row>()
@@ -56,7 +56,7 @@ where
                     "INSERT INTO read_ribbons \
                          (id, created_at, updated_at, user_id, story_id, is_following) \
                          VALUES (?, ?, ?, ?, ?, 1)",
-                    (read_ribbon_uid, format!{"'{}'", now}, format!{"'{}'", now}, uid, story),
+                    (read_ribbon_uid, format!{"{}", now}, format!{"{}", now}, uid, story),
                 )
                 .await?
             }
@@ -65,7 +65,7 @@ where
                     "UPDATE read_ribbons \
                          SET read_ribbons.updated_at = ? \
                          WHERE read_ribbons.id = ?",
-                    (format!{"'{}'", now}, rr.get::<u32, _>("id").unwrap()),
+                    (format!{"{}", now}, rr.get::<u32, _>("id").unwrap()),
                 )
                 .await?
             }

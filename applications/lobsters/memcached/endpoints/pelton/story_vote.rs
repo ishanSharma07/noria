@@ -20,7 +20,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (format!{"'{}'", ::std::str::from_utf8(&story[..]).unwrap()},),
+            (format!{"{}", ::std::str::from_utf8(&story[..]).unwrap()},),
         )
         .await?
         .collect_and_drop::<my::Row>()
@@ -94,7 +94,7 @@ where
         .drop_exec(
             "SELECT \
              comments.upvotes, \
-             comments.downvotes, comments.story_id \
+             comments.downvotes \
              FROM comments \
              JOIN stories ON comments.story_id = stories.id \
              WHERE comments.story_id = ? \

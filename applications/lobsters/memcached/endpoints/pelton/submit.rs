@@ -35,9 +35,9 @@ where
         // check that story id isn't already assigned
         c = c
             .drop_exec(
-                "SELECT 1 AS `one`, stories.short_id FROM stories \
+                "SELECT 1 AS `one` FROM stories \
                  WHERE stories.short_id = ?",
-                (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
+                (format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},),
             )
             .await?;
     }
@@ -74,14 +74,14 @@ where
              story_cache, merged_story_id, unavailable_at, twitter_id, user_is_author) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL)",
             (   story,
-                format!("'{}'", chrono::Local::now().naive_local()),
+                format!("{}", chrono::Local::now().naive_local()),
                 user,
-                format!{"'{}'", title},
-                "'to infinity'", // lorem ipsum?
-                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
+                format!{"{}", title},
+                "to infinity", // lorem ipsum?
+                format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},
                 1,
                 19217,
-                "'<p>to infinity</p>'",
+                "<p>to infinity</p>",
             ),
         )
         .await?;
@@ -96,7 +96,7 @@ where
         )
         .await?;
 
-    let key = format!("'user:{}:stories_submitted'", user);
+    let key = format!("user:{}:stories_submitted", user);
     c = c
         .drop_exec(
             "REPLACE INTO keystores (keyX, valueX) \
@@ -112,7 +112,7 @@ where
                 "SELECT keystores.* \
                  FROM keystores \
                  WHERE keystores.keyX = ?",
-                (format!("'{}'", key),),
+                (format!("{}", key),),
             )
             .await?;
 
@@ -141,7 +141,7 @@ where
             .drop_exec(
                 "SELECT \
                  comments.upvotes, \
-                 comments.downvotes, comments.story_id \
+                 comments.downvotes \
                  FROM comments \
                  JOIN stories ON comments.story_id = stories.id \
                  WHERE comments.story_id = ? \
