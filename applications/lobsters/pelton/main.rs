@@ -26,6 +26,7 @@ enum Variant {
 struct MysqlTrawlerBuilder {
     opts: my::OptsBuilder,
     variant: Variant,
+    users_counter: Arc<AtmoicU32>,
     stories_counter: Arc<AtomicU32>,
     taggings_counter: Arc<AtomicU32>,
     votes_counter: Arc<AtomicU32>,
@@ -43,6 +44,7 @@ struct MysqlTrawler {
     c: my::Pool,
     next_conn: MaybeConn,
     variant: Variant,
+    users_counter: Arc<AtmoicU32>,
     stories_counter: Arc<AtomicU32>,
     taggings_counter: Arc<AtomicU32>,
     votes_counter: Arc<AtomicU32>,
@@ -69,6 +71,7 @@ impl Service<bool> for MysqlTrawlerBuilder {
     fn call(&mut self, priming: bool) -> Self::Future {
         let orig_opts = self.opts.clone();
         let variant = self.variant;
+        let users_counter = Arc::clone(&self.users_counter);
         let stories_counter = Arc::clone(&self.stories_counter);
         let taggings_counter = Arc::clone(&self.taggings_counter);
         let votes_counter = Arc::clone(&self.votes_counter);
@@ -116,6 +119,7 @@ impl Service<bool> for MysqlTrawlerBuilder {
                     c: my::Pool::new(orig_opts.clone()),
                     next_conn: MaybeConn::None,
                     variant,
+                    users_counter: users_counter,
                     stories_counter: stories_counter,
                     taggings_counter: taggings_counter,
                     votes_counter: votes_counter,
@@ -129,6 +133,7 @@ impl Service<bool> for MysqlTrawlerBuilder {
                     c: my::Pool::new(orig_opts.clone()),
                     next_conn: MaybeConn::None,
                     variant,
+                    users_counter: users_counter,
                     stories_counter: stories_counter,
                     taggings_counter: taggings_counter,
                     votes_counter: votes_counter,
@@ -180,6 +185,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
         };
         // This is to hack around the following error:
         // `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+        let users_counter_local = self.users_counter.clone();
         let stories_counter_local = self.stories_counter.clone();
         let taggings_counter_local = self.taggings_counter.clone();
         let votes_counter_local = self.votes_counter.clone();
@@ -245,6 +251,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                             .await?;
 
                         if user.is_none() {
+                            let id = users_counter_local.fetch_add(1, Ordering::SeqCst);
                             let uid = acting_as.unwrap();
                             c = c
                                 .drop_exec(
@@ -257,7 +264,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                                     disabled_invite_by_user_id, disabled_invite_reason, settings) \
                                     VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
                                         NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
-                                    (format!("{}", uid), format!("'user{}'", uid), format!("'session_token_{}'", uid),),
+                                    (format!("{}", id), format!("'user{}'", uid), format!("'session_token_{}'", uid),),
                                 )
                                 .await?;
                         }
@@ -425,6 +432,7 @@ fn main() {
     // Atomic counter to generate ids for stories. This serves as a replacement for auto
     // increment the id column.
     // Preserve a parent counter so that it does not go out of scope.
+    let users_counter = Arc::new(AtomicU32::new(0));
     let stories_counter = Arc::new(AtomicU32::new(0));
     let taggings_counter = Arc::new(AtomicU32::new(0));
     let votes_counter = Arc::new(AtomicU32::new(0));
@@ -435,6 +443,7 @@ fn main() {
     let s = MysqlTrawlerBuilder {
         variant,
         opts: opts.into(),
+        users_counter: users_counter,
         stories_counter: stories_counter,
         taggings_counter: taggings_counter,
         votes_counter: votes_counter,
