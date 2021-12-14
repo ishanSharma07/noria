@@ -2,8 +2,7 @@ use hdrhistogram::serialization::interval_log;
 use hdrhistogram::Histogram;
 use std::time::Duration;
 
-#include!("/home/pelton/baseline/memcached_ffi_wrappers.rs");
-
+include!("../../../../baseline/memcached_ffi_wrappers.rs");
 
 #[derive(Default, Clone)]
 pub struct Timeline {
@@ -72,7 +71,7 @@ impl Timeline {
     pub fn write<W: std::io::Write, S: hdrhistogram::serialization::Serializer>(
         &self,
         w: &mut interval_log::IntervalLogWriter<W, S>,
-    ) -> Result<(), interval_log::IntervalLogWriterError<S::SerializeError>> {
+    ) -> std::result::Result<(), interval_log::IntervalLogWriterError<S::SerializeError>> {
         let proc_tag = interval_log::Tag::new("processing").unwrap();
         let sjrn_tag = interval_log::Tag::new("sojourn").unwrap();
         for (i, hs) in self.histograms.iter().enumerate() {

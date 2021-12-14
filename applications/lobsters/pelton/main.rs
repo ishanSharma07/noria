@@ -16,6 +16,8 @@ use std::sync::{Arc};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
+use noria_applications::memcached;
+
 const PELTON_SCHEMA: &'static str = include_str!("db-schema/pelton.sql");
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -415,6 +417,10 @@ fn main() {
     if let Some(h) = args.value_of("histogram") {
         wl.with_histogram(h);
     }
+
+    memcached::MemInitialize("", "", "", "");
+    memcached::MemCache("");
+    memcached::MemRead(0, unimplemented!());
 
     // check that we can indeed connect
     let mut opts = my::OptsBuilder::from_opts(args.value_of("dbn").unwrap());
