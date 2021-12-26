@@ -5,6 +5,8 @@ use std::future::Future;
 use std::iter;
 use trawler::UserId;
 
+use noria_applications::memcached::*;
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -12,26 +14,42 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    let c = c.await?;
-    let stories = c
-        .prep_exec(
-            "SELECT stories.* FROM stories \
-             WHERE stories.merged_story_id IS NULL \
-             AND stories.is_expired = 0 \
-             AND stories.upvotes - stories.downvotes >= 0 \
-             ORDER BY hotness ASC LIMIT 51", (),
-        )
-        .await?;
-    let (mut c, (users, stories)) = stories
-        .reduce_and_drop(
-            (HashSet::new(), HashSet::new()),
-            |(mut users, mut stories), story| {
-                users.insert(story.get::<u32, _>("user_id").unwrap());
-                stories.insert(story.get::<u32, _>("id").unwrap());
-                (users, stories)
-            },
-        )
-        .await?;
+    let mut c = c.await?;
+    let query = "SELECT stories.* FROM stories \
+     WHERE stories.merged_story_id IS NULL \
+     AND stories.is_expired = 0 \
+     AND stories.upvotes - stories.downvotes >= 0 \
+     ORDER BY hotness ASC LIMIT 51";
+    let query_id = MemCache(query);
+    let records = MemRead(query_id,  MemCreateKey(vec![]));
+    let mut users: Vec<u32> = Vec::new();
+    let mut stories: Vec<u32> = Vec::new();
+    for i in 0..records.len(){
+        let record: Vec<&str> = records[i].split("|").collect();
+        let record = &record[1..];
+        // println!("[frontpage, stories] record: {:?}", record);
+        users.push(record[2].parse().unwrap());
+        stories.push(record[0].parse().unwrap());
+    }
+    // let stories = c
+    //     .prep_exec(
+    //         "SELECT stories.* FROM stories \
+    //          WHERE stories.merged_story_id IS NULL \
+    //          AND stories.is_expired = 0 \
+    //          AND stories.upvotes - stories.downvotes >= 0 \
+    //          ORDER BY hotness ASC LIMIT 51", (),
+    //     )
+    //     .await?;
+    // let (mut c, (users, stories)) = stories
+    //     .reduce_and_drop(
+    //         (HashSet::new(), HashSet::new()),
+    //         |(mut users, mut stories), story| {
+    //             users.insert(story.get::<u32, _>("user_id").unwrap());
+    //             stories.insert(story.get::<u32, _>("id").unwrap());
+    //             (users, stories)
+    //         },
+    //     )
+    //     .await?;
 
     assert!(!stories.is_empty(), "got no stories from /frontpage");
 
@@ -78,15 +96,23 @@ where
             let tags_params = tags.iter().map(|_| "?").collect::<Vec<_>>().join(",");
             let all_values: Vec<&u32> = tags.iter().map(|s| s as &_).chain(stories_in_values.iter().map(|s| s as &_)).collect();
 
-            c = c
-                .drop_exec(&format!(
-                    "SELECT taggings.story_id \
-                     FROM taggings \
-                     WHERE taggings.story_id IN ({}) \
-                     AND taggings.tag_id IN ({})",
-                    stories_in_params, tags_params
-                ), all_values)
-                .await?;
+            let mut query = "SELECT taggings.story_id \
+             FROM taggings \
+             WHERE taggings.story_id = ? \
+             AND taggings.tag_id = ?";
+            let query_id = MemCache(query);
+            // TODO: Memread
+            // for i in 0..all_values.len(){
+            //     query.replacen("?", &format!("{}", all_values[i]), 1);
+            // }
+
+
+            // c = c
+            //     .drop_exec(&format!(
+            //         ,
+            //         stories_in_params, tags_params
+            //     ), all_values)
+            //     .await?;
         }
     }
 
@@ -96,6 +122,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
 
+    // println!("[frontpage] users: {:?}", users);
     c = c
         .drop_query(&format!(
             "SELECT users.* FROM users WHERE users.id IN ({})",
@@ -103,39 +130,66 @@ where
         ))
         .await?;
 
-    c = c
-        .drop_exec(&format!(
-            "SELECT suggested_titles.* \
-             FROM suggested_titles \
-             WHERE suggested_titles.story_id IN ({})",
-            stories_in_params
-        ), &stories_in_values)
-        .await?;
+    let query = "SELECT suggested_titles.* \
+     FROM suggested_titles \
+     WHERE suggested_titles.story_id = ?";
+    let query_id = MemCache(query);
+    //TODO(ishan): memread
+    for i in 0..stories_in_values.len(){
+        let _record = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(stories[i].clone() as u64)]));
+    }
+    // c = c
+    //     .drop_exec(&format!(
+    //         "SELECT suggested_titles.* \
+    //          FROM suggested_titles \
+    //          WHERE suggested_titles.story_id IN ({})",
+    //         stories_in_params
+    //     ), &stories_in_values)
+    //     .await?;
 
 
-    c = c
-        .drop_exec(&format!(
-            "SELECT suggested_taggings.* \
-             FROM suggested_taggings \
-             WHERE suggested_taggings.story_id IN ({})",
-            stories_in_params
-        ), &stories_in_values)
-        .await?;
+    let query = "SELECT suggested_taggings.* \
+     FROM suggested_taggings \
+     WHERE suggested_taggings.story_id = ?";
+    let query_id = MemCache(query);
+    //TODO(ishan): memread
+    for i in 0..stories_in_values.len(){
+        let _record = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(stories[i].clone() as u64)]));
+    }
+    // c = c
+    //     .drop_exec(&format!(
+    //         "SELECT suggested_taggings.* \
+    //          FROM suggested_taggings \
+    //          WHERE suggested_taggings.story_id IN ({})",
+    //         stories_in_params
+    //     ), &stories_in_values)
+    //     .await?;
 
-    let taggings = c
-        .prep_exec( &format!(
-            "SELECT taggings.* FROM taggings \
-             WHERE taggings.story_id IN ({})",
-            stories_in_params
-        ), &stories_in_values)
-        .await?;
-
-    let (mut c, tags) = taggings
-        .reduce_and_drop(HashSet::new(), |mut tags, tagging| {
-            tags.insert(tagging.get::<u32, _>("tag_id").unwrap());
-            tags
-        })
-        .await?;
+    let query = "SELECT taggings.* FROM taggings \
+     WHERE taggings.story_id = ?";
+    let query_id = MemCache(query);
+    // TODO(Ishan): MemRead
+    let mut tags: Vec<u32> = Vec::new();
+    for i in 0..stories_in_values.len(){
+        let record = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(stories[i].clone() as u64)]));
+        let record: Vec<&str> = record[0].split("|").collect();
+        let record = &record[1..];
+        tags.push(record[2].parse().unwrap());
+    }
+    // let taggings = c
+    //     .prep_exec( &format!(
+    //         "SELECT taggings.* FROM taggings \
+    //          WHERE taggings.story_id IN ({})",
+    //         stories_in_params
+    //     ), &stories_in_values)
+    //     .await?;
+    //
+    // let (mut c, tags) = taggings
+    //     .reduce_and_drop(HashSet::new(), |mut tags, tagging| {
+    //         tags.insert(tagging.get::<u32, _>("tag_id").unwrap());
+    //         tags
+    //     })
+    //     .await?;
 
     let tags = tags
         .into_iter()

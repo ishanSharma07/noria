@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use std::future::Future;
 use trawler::{StoryId, UserId};
 
+use noria_applications::memcached::*;
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -16,6 +18,13 @@ where
 {
     // XXX: at the end there are also a bunch of repeated, seemingly superfluous queries
     let c = c.await?;
+    // let query = "SELECT stories.* \
+    //  FROM stories \
+    //  WHERE stories.short_id = ?";
+    // let query_id = MemCache(query);
+    // let query_id = MemCache(query);
+    // let records = MemRead(query_id,  MemCreateKey(vec![MemSetStr(::std::str::from_utf8(&comment[..]).unwrap())]));
+    // assert!(records.len() == 1);
     let (mut c, mut story) = c
         .prep_exec(
             "SELECT stories.* \
@@ -70,40 +79,58 @@ where
                 .await?
             }
         };
+        MemUpdate("read_ribbons");
     }
 
     // XXX: probably not drop here, but we know we have no merged stories
-    c = c
-        .drop_exec(
-            "SELECT stories.id, stories.merged_story_id \
-             FROM stories \
-             WHERE stories.merged_story_id = ?",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT stories.id, stories.merged_story_id \
+     FROM stories \
+     WHERE stories.merged_story_id = ?";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+    // c = c
+    //     .drop_exec(
+    //         "SELECT stories.id, stories.merged_story_id \
+    //          FROM stories \
+    //          WHERE stories.merged_story_id = ?",
+    //         (story,),
+    //     )
+    //     .await?;
 
-    let comments = c
-        .prep_exec(
-            "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
-             FROM comments \
-             WHERE comments.story_id = ? \
-             ORDER BY \
-             saldo ASC, \
-             confidence DESC",
-            (story,),
-        )
-        .await?;
 
-    let (mut c, (users, comments)) = comments
-        .reduce_and_drop(
-            (HashSet::new(), HashSet::new()),
-            |(mut users, mut comments), comment| {
-                users.insert(comment.get::<u32, _>("user_id").unwrap());
-                comments.insert(comment.get::<u32, _>("id").unwrap());
-                (users, comments)
-            },
-        )
-        .await?;
+    let query = "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
+     FROM comments \
+     WHERE comments.story_id = ? \
+     ORDER BY \
+     saldo ASC, \
+     confidence DESC";
+    let query_id = MemCache(query);
+    let records = MemRead(query_id, MemCreateKey(vec![MemSetUInt(story as u64)]));
+    let mut comments: Vec<u32> = Vec::new();
+    let mut users: Vec<u32> = Vec::new();
+    for i in 0..records.len(){
+        let record: Vec<&str> = records[i].split("|").collect();
+        let record = &record[1..];
+        comments.push(record[0].parse().unwrap());
+        users.push(record[5].parse().unwrap());
+    }
+    // let comments = c
+    //     .prep_exec(
+    //         ,
+    //         (story,),
+    //     )
+    //     .await?;
+
+    // let (mut c, (users, comments)) = comments
+    //     .reduce_and_drop(
+    //         (HashSet::new(), HashSet::new()),
+    //         |(mut users, mut comments), comment| {
+    //             users.insert(comment.get::<u32, _>("user_id").unwrap());
+    //             comments.insert(comment.get::<u32, _>("id").unwrap());
+    //             (users, comments)
+    //         },
+    //     )
+    //     .await?;
 
     // get user info for all commenters
     let users = users
@@ -127,12 +154,18 @@ where
     //     .join(", ");
     let comments_params = comments.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let comments: Vec<&u32> = comments.iter().map(|s| s as &_).collect();
-    c = c
-        .drop_exec(&format!(
-            "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
-            comments_params
-        ), comments)
-        .await?;
+    let query = "SELECT votes.* FROM votes WHERE votes.comment_id = ?";
+    let query_id = MemCache(query);
+    // TODO(Ishan): Memcache
+    for i in 0..comments.len(){
+        let _record = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(comments[i].clone() as u64)]));
+    }
+    // c = c
+    //     .drop_exec(&format!(
+    //         "SELECT votes.* FROM votes WHERE votes.comment_id IN ({})",
+    //         comments_params
+    //     ), comments)
+    //     .await?;
 
     // NOTE: lobste.rs here fetches the user list again. unclear why?
     if let Some(uid) = acting_as {
@@ -168,21 +201,31 @@ where
             .await?;
     }
 
-    let taggings = c
-        .prep_exec(
-            "SELECT taggings.* \
-             FROM taggings \
-             WHERE taggings.story_id = ?",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT taggings.* \
+     FROM taggings \
+     WHERE taggings.story_id = ?";
+    let query_id = MemCache(query);
+    let records = MemRead(query_id, MemCreateKey(vec![MemSetUInt(story as u64)]));
+    let mut tags: Vec<u32> = Vec::new();
+    for i in 0..records.len(){
+        let record:Vec<&str> = records[i].split("|").collect();
+        tags.push(record[2].parse().unwrap());
+    }
+    // let taggings = c
+    //     .prep_exec(
+    //         "SELECT taggings.* \
+    //          FROM taggings \
+    //          WHERE taggings.story_id = ?",
+    //         (story,),
+    //     )
+    //     .await?;
 
-    let (c, tags) = taggings
-        .reduce_and_drop(HashSet::new(), |mut tags, tagging| {
-            tags.insert(tagging.get::<u32, _>("tag_id").unwrap());
-            tags
-        })
-        .await?;
+    // let (c, tags) = taggings
+    //     .reduce_and_drop(HashSet::new(), |mut tags, tagging| {
+    //         tags.insert(tagging.get::<u32, _>("tag_id").unwrap());
+    //         tags
+    //     })
+    //     .await?;
 
     let tags = tags
         .into_iter()

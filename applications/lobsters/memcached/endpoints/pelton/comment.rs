@@ -4,6 +4,8 @@ use my::prelude::*;
 use std::future::Future;
 use trawler::{CommentId, StoryId, UserId};
 
+use noria_applications::memcached::*;
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -17,8 +19,15 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    let c = c.await?;
+    let mut c = c.await?;
     let user = acting_as.unwrap();
+    // let query = "SELECT stories.* \
+    //  FROM stories \
+    //  WHERE stories.short_id = ?";
+    // let query_id = MemCache(query);
+    // let record = MemRead(query_id,  MemCreateKey(vec![MemSetStr(::std::str::from_utf8(&story[..]).unwrap())]));
+    // assert!(record.len() == 1);
+    // let record = &record[0];
     let (mut c, story) = c
         .first_exec::<_, _, my::Row>(
             "SELECT stories.* \
@@ -28,6 +37,10 @@ where
         )
         .await?;
     let story = story.unwrap();
+    // let record: Vec<&str> = record.split("|").collect();
+    // let author: u32 = record[0].parse().unwrap();
+    // let hotness: i64 = record[11].parse().unwrap();
+    // let story: u32 = record[0].parse().unwrap();
     let author = story.get::<u32, _>("user_id").unwrap();
     let hotness = story.get::<i64, _>("hotness").unwrap();
     let story = story.get::<u32, _>("id").unwrap();
@@ -137,6 +150,8 @@ where
         )
         .await?
     };
+    MemUpdate("comments");
+
     // let comment = q.last_insert_id().unwrap();
     let comment = comment_uid;
     let mut c = q.drop_result().await?;
@@ -162,30 +177,46 @@ where
             (vote_uid, user, story, comment, 1),
         )
         .await?;
+    MemUpdate("votes");
 
-    c = c
-        .drop_exec(
-            "SELECT stories.id, stories.merged_story_id \
-             FROM stories \
-             WHERE stories.merged_story_id = ?",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT stories.id, stories.merged_story_id \
+     FROM stories \
+     WHERE stories.merged_story_id = ?";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id, MemCreateKey(vec![MemSetUInt(story as u64)]));
+    // c = c
+    //     .drop_exec(
+    //         "SELECT stories.id, stories.merged_story_id \
+    //          FROM stories \
+    //          WHERE stories.merged_story_id = ?",
+    //         (story,),
+    //     )
+    //     .await?;
 
     // why are these ordered?
-    let (mut c, count) = c
-        .prep_exec(
-            "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
-             FROM comments \
-             WHERE comments.story_id = ? \
-             ORDER BY \
-             saldo ASC, \
-             confidence DESC",
-            (story,),
-        )
-        .await?
-        .reduce_and_drop(0, |rows, _| rows + 1)
-        .await?;
+    let query = "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
+     FROM comments \
+     WHERE comments.story_id = ? \
+     ORDER BY \
+     saldo ASC, \
+     confidence DESC";
+    let query_id = MemCache(query);
+    let records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+    let count = records.len();
+
+    // let (mut c, count) = c
+    //     .prep_exec(
+    //         "SELECT comments.*, comments.upvotes - comments.downvotes AS saldo \
+    //          FROM comments \
+    //          WHERE comments.story_id = ? \
+    //          ORDER BY \
+    //          saldo ASC, \
+    //          confidence DESC",
+    //         (story,),
+    //     )
+    //     .await?
+    //     .reduce_and_drop(0, |rows, _| rows + 1)
+    //     .await?;
 
     c = c
         .drop_exec(
@@ -193,41 +224,66 @@ where
             (count, story),
         )
         .await?;
+    MemUpdate("stories");
 
     if !priming {
         // get all the stuff needed to compute updated hotness
-        c = c
-            .drop_exec(
-                "SELECT tags.* \
-                 FROM tags \
-                 INNER JOIN taggings \
-                 ON tags.id = taggings.tag_id \
-                 WHERE taggings.story_id = ?",
-                (story,),
-            )
-            .await?;
+        let query = "SELECT tags.* \
+         FROM tags \
+         INNER JOIN taggings \
+         ON tags.id = taggings.tag_id \
+         WHERE taggings.story_id = ?";
+        let query_id = MemCache(query);
+        let records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
 
-        c = c
-            .drop_exec(
-                "SELECT \
-                 comments.upvotes, \
-                 comments.downvotes \
-                 FROM comments \
-                 JOIN stories ON comments.story_id = stories.id \
-                 WHERE comments.story_id = ? \
-                 AND comments.user_id != stories.user_id",
-                (story,),
-            )
-            .await?;
+        // c = c
+        //     .drop_exec(
+        //         "SELECT tags.* \
+        //          FROM tags \
+        //          INNER JOIN taggings \
+        //          ON tags.id = taggings.tag_id \
+        //          WHERE taggings.story_id = ?",
+        //         (story,),
+        //     )
+        //     .await?;
 
-        c = c
-            .drop_exec(
-                "SELECT stories.id, stories.merged_story_id \
-                 FROM stories \
-                 WHERE stories.merged_story_id = ?",
-                (story,),
-            )
-            .await?;
+        let query = "SELECT \
+         comments.upvotes, \
+         comments.downvotes \
+         FROM comments \
+         JOIN stories ON comments.story_id = stories.id \
+         WHERE comments.story_id = ? \
+         AND comments.user_id != stories.user_id";
+        let query_id = MemCache(query);
+        let records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+
+        // c = c
+        //     .drop_exec(
+        //         "SELECT \
+        //          comments.upvotes, \
+        //          comments.downvotes \
+        //          FROM comments \
+        //          JOIN stories ON comments.story_id = stories.id \
+        //          WHERE comments.story_id = ? \
+        //          AND comments.user_id != stories.user_id",
+        //         (story,),
+        //     )
+        //     .await?;
+
+        let query = "SELECT stories.id, stories.merged_story_id \
+         FROM stories \
+         WHERE stories.merged_story_id = ?";
+        let query_id = MemCache(query);
+        let records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+
+        // c = c
+        //     .drop_exec(
+        //         "SELECT stories.id, stories.merged_story_id \
+        //          FROM stories \
+        //          WHERE stories.merged_story_id = ?",
+        //         (story,),
+        //     )
+        //     .await?;
     }
 
     // why oh why is story hotness *updated* here?!
@@ -239,6 +295,7 @@ where
             (hotness - 1, story),
         )
         .await?;
+    MemUpdate("stories");
 
     let key = format!("user:{}:comments_posted", user);
     c = c
@@ -248,6 +305,7 @@ where
             (key, 1),
         )
         .await?;
+    MemUpdate("keystores");
 
     Ok((c, false))
 }

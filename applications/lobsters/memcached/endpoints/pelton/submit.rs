@@ -4,6 +4,8 @@ use my::prelude::*;
 use std::future::Future;
 use trawler::{StoryId, UserId};
 
+use noria_applications::memcached::*;
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -33,13 +35,14 @@ where
 
     if !priming {
         // check that story id isn't already assigned
-        c = c
-            .drop_exec(
-                "SELECT 1 AS `one` FROM stories \
-                 WHERE stories.short_id = ?",
-                (format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},),
-            )
-            .await?;
+        let query_id = MemCache("SELECT 1 AS `one` FROM stories WHERE stories.short_id = ?");
+        let _records = MemRead(query_id, MemCreateKey(vec![MemSetStr(::std::str::from_utf8(&id[..]).unwrap())]));
+        // c = c
+        //     .drop_exec(
+        //         ,
+        //         (format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},),
+        //     )
+        //     .await?;
     }
 
     // TODO: check for similar stories if there's a url
@@ -87,6 +90,7 @@ where
         .await?;
     // let _story_unused = q.last_insert_id().unwrap();
     let mut c = q.drop_result().await?;
+    MemUpdate("stories");
 
     c = c
         .drop_exec(
@@ -95,6 +99,7 @@ where
             (taggings_uid, story, tag_id),
         )
         .await?;
+    MemUpdate("taggings");
 
     let key = format!("user:{}:stories_submitted", user);
     c = c
@@ -104,6 +109,7 @@ where
             (key, 1),
         )
         .await?;
+    MemUpdate("keystores");
 
     if !priming {
         let key = format!("user:{}:stories_submitted", user);
@@ -135,20 +141,24 @@ where
             (votes_uid, user, story, 1),
         )
         .await?;
+    MemUpdate("votes");
 
     if !priming {
-        c = c
-            .drop_exec(
-                "SELECT \
-                 comments.upvotes, \
-                 comments.downvotes \
-                 FROM comments \
-                 JOIN stories ON comments.story_id = stories.id \
-                 WHERE comments.story_id = ? \
-                 AND comments.user_id != stories.user_id",
-                (story,),
-            )
-            .await?;
+        let query = "SELECT \
+         comments.upvotes, \
+         comments.downvotes \
+         FROM comments \
+         JOIN stories ON comments.story_id = stories.id \
+         WHERE comments.story_id = ? \
+         AND comments.user_id != stories.user_id";
+        let query_id = MemCache(query);
+        let records = MemRead(query_id, MemCreateKey(vec![MemSetUInt(story as u64)]));
+        // c = c
+        //     .drop_exec(
+        //         ,
+        //         (story,),
+        //     )
+        //     .await?;
 
         // why oh why is story hotness *updated* here?!
         c = c
@@ -159,6 +169,7 @@ where
                 (19217, story),
             )
             .await?;
+        MemUpdate("stories");
     }
 
     Ok((c, false))

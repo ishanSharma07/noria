@@ -2,6 +2,7 @@ use my;
 use my::prelude::*;
 use std::future::Future;
 use trawler::UserId;
+use noria_applications::memcached::*;
 
 pub(crate) async fn handle<F>(
     c: F,
@@ -23,6 +24,15 @@ where
     let uid = user.expect(&format!("user {} should exist", uid)).get::<u32, _>("id").unwrap();
 
     // most popular tag
+    let query = "SELECT tags.id, stories.user_id, count(*) AS `count` FROM tags \
+     INNER JOIN taggings ON tags.id = taggings.tag_id \
+     INNER JOIN stories ON taggings.story_id = stories.id \
+     WHERE tags.inactive = 0 \
+     AND stories.user_id = ? \
+     GROUP BY tags.id, stories.user_id \
+     ORDER BY `count` DESC LIMIT 1";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id, MemCreateKey(vec![]));
     c = c
         .drop_exec(
             "SELECT tags.id, stories.user_id, count(*) AS `count` FROM tags \
@@ -44,6 +54,7 @@ where
             (format!("user:{}:stories_submitted", uid),),
         )
         .await?;
+    MemUpdate("keystores");
 
     c = c
         .drop_exec(
@@ -53,6 +64,7 @@ where
             (format!("user:{}:comments_posted", uid),),
         )
         .await?;
+    MemUpdate("keystores");
 
     c = c
         .drop_exec(

@@ -5,6 +5,9 @@ use std::future::Future;
 use std::iter;
 use trawler::UserId;
 
+use noria_applications::memcached::*;
+
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -12,27 +15,46 @@ pub(crate) async fn handle<F>(
 where
     F: 'static + Future<Output = Result<my::Conn, my::error::Error>> + Send,
 {
-    let c = c.await?;
-    let comments = c
-        .prep_exec("SELECT comments.* \
-         FROM comments \
-         WHERE comments.is_deleted = 0 \
-         AND comments.is_moderated = 0 \
-         ORDER BY id DESC \
-         LIMIT 40", (), )
-        .await?;
+    let mut c = c.await?;
+    let query = "SELECT comments.* \
+     FROM comments \
+     WHERE comments.is_deleted = 0 \
+     AND comments.is_moderated = 0 \
+     ORDER BY id DESC \
+     LIMIT 40";
+    let query_id = MemCache(query);
+    let records = MemRead(query_id,  MemCreateKey(vec![]));
+    // let comments = c
+    //     .prep_exec("SELECT comments.* \
+    //      FROM comments \
+    //      WHERE comments.is_deleted = 0 \
+    //      AND comments.is_moderated = 0 \
+    //      ORDER BY id DESC \
+    //      LIMIT 40", (), )
+    //     .await?;
 
-    let (mut c, (comments, users, stories)) = comments
-        .reduce_and_drop(
-            (Vec::new(), HashSet::new(), HashSet::new()),
-            |(mut comments, mut users, mut stories), comment| {
-                comments.push(comment.get::<u32, _>("id").unwrap());
-                users.insert(comment.get::<u32, _>("user_id").unwrap());
-                stories.insert(comment.get::<u32, _>("story_id").unwrap());
-                (comments, users, stories)
-            },
-        )
-        .await?;
+    let mut comments: Vec<u32> = Vec::new();
+    let mut users: Vec<u32> = Vec::new();
+    let mut stories: Vec<u32> = Vec::new();
+    for i in 0..records.len(){
+        let record: Vec<&str> = records[i].split("|").collect();
+        let record = &record[1..];
+        // println!("[comment, comments] record: {:?}", record);
+        comments.push(record[0].parse().unwrap());
+        users.push(record[5].parse().unwrap());
+        stories.push(record[4].parse().unwrap());
+    }
+    // let (mut c, (comments, users, stories)) = comments
+    //     .reduce_and_drop(
+    //         (Vec::new(), HashSet::new(), HashSet::new()),
+    //         |(mut comments, mut users, mut stories), comment| {
+    //             comments.push(comment.get::<u32, _>("id").unwrap());
+    //             users.insert(comment.get::<u32, _>("user_id").unwrap());
+    //             stories.insert(comment.get::<u32, _>("story_id").unwrap());
+    //             (comments, users, stories)
+    //         },
+    //     )
+    //     .await?;
 
     if let Some(uid) = acting_as {
         let params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -57,6 +79,7 @@ where
         .map(|id| format!("{}", id))
         .collect::<Vec<_>>()
         .join(",");
+    // println!("[comments1] users: {:?}", users);
     c = c
         .drop_query(&format!(
             "SELECT users.* FROM users \
@@ -74,20 +97,42 @@ where
     let story_params = stories.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let stories: Vec<&u32> = stories.iter().map(|s| s as &_).collect();
 
-    let stories = c
-        .prep_exec(&format!(
-            "SELECT stories.* FROM stories \
-             WHERE stories.id IN ({})",
-            story_params
-        ), stories)
-        .await?;
 
-    let (mut c, authors) = stories
-        .reduce_and_drop(HashSet::new(), |mut authors, story| {
-            authors.insert(story.get::<u32, _>("user_id").unwrap());
-            authors
-        })
-        .await?;
+    // let key_values: Vec<memcached::Value> = Vec::new();
+    // let tvec = stories.iter().map(|s| MemSetUInt(s.clone() as u64)).collect();
+    // for i in 0..stories.len(){
+    //     key_values.push(MemSetUInt(stories[i].clone() as u64));
+    // }
+    // let records = MemRead(query_id, MemCreateKey(key_values));
+    let query = "SELECT stories.* FROM stories \
+         WHERE stories.id = ?";
+    let query_id = MemCache(query);
+    let mut authors: Vec<u32> = Vec::new();
+    for i in 0..stories.len(){
+        let record = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(stories[i].clone() as u64)]));
+        let record: Vec<&str> = record[0].split("|").collect();
+        let record = &record[1..];
+        authors.push(record[2].parse().unwrap());
+    }
+    // let stories = c
+    //     .prep_exec(&format!(
+    //         "SELECT stories.* FROM stories \
+    //          WHERE stories.id IN ({})",
+    //         story_params
+    //     ), stories)
+    //     .await?;
+    // let mut authors: Vec<u32> = Vec::new();
+    // for i in 0..records.len(){
+    //     let record: Vec<&str> = records[i].split("|").collect();
+    //     authors.push(records[2].parse().unwrap());
+    // }
+
+    // let (mut c, authors) = stories
+    //     .reduce_and_drop(HashSet::new(), |mut authors, story| {
+    //         authors.insert(story.get::<u32, _>("user_id").unwrap());
+    //         authors
+    //     })
+    //     .await?;
 
     if let Some(uid) = acting_as {
         let params = comments.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -114,6 +159,7 @@ where
         .collect::<Vec<_>>()
         .join(",");
 
+    // println!("[comments2] users: {:?}", users);
     c = c
         .drop_query(&format!(
                 "SELECT users.* FROM users \

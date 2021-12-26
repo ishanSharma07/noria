@@ -3,6 +3,9 @@ use my::prelude::*;
 use std::future::Future;
 use trawler::{StoryId, UserId, Vote};
 
+use noria_applications::memcached::*;
+
+
 pub(crate) async fn handle<F>(
     c: F,
     acting_as: Option<UserId>,
@@ -62,7 +65,7 @@ where
             ),
         )
         .await?;
-
+    MemUpdate("votes");
     c = c
         .drop_exec(
             &format!(
@@ -77,40 +80,61 @@ where
             (author,),
         )
         .await?;
-
+    MemUpdate("users");
     // get all the stuff needed to compute updated hotness
-    c = c
-        .drop_exec(
-            "SELECT tags.*, taggings.story_id \
-             FROM tags \
-             INNER JOIN taggings \
-             ON tags.id = taggings.tag_id \
-             WHERE taggings.story_id = ?",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT tags.*, taggings.story_id \
+     FROM tags \
+     INNER JOIN taggings \
+     ON tags.id = taggings.tag_id \
+     WHERE taggings.story_id = ?";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+    // c = c
+    //     .drop_exec(
+    //         "SELECT tags.*, taggings.story_id \
+    //          FROM tags \
+    //          INNER JOIN taggings \
+    //          ON tags.id = taggings.tag_id \
+    //          WHERE taggings.story_id = ?",
+    //         (story,),
+    //     )
+    //     .await?;
 
-    c = c
-        .drop_exec(
-            "SELECT \
-             comments.upvotes, \
-             comments.downvotes \
-             FROM comments \
-             JOIN stories ON comments.story_id = stories.id \
-             WHERE comments.story_id = ? \
-             AND comments.user_id != stories.user_id",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT \
+     comments.upvotes, \
+     comments.downvotes \
+     FROM comments \
+     JOIN stories ON comments.story_id = stories.id \
+     WHERE comments.story_id = ? \
+     AND comments.user_id != stories.user_id";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+    // c = c
+    //     .drop_exec(
+    //         "SELECT \
+    //          comments.upvotes, \
+    //          comments.downvotes \
+    //          FROM comments \
+    //          JOIN stories ON comments.story_id = stories.id \
+    //          WHERE comments.story_id = ? \
+    //          AND comments.user_id != stories.user_id",
+    //         (story,),
+    //     )
+    //     .await?;
 
-    c = c
-        .drop_exec(
-            "SELECT stories.id, stories.merged_story_id \
-             FROM stories \
-             WHERE stories.merged_story_id = ?",
-            (story,),
-        )
-        .await?;
+    let query = "SELECT stories.id, stories.merged_story_id \
+     FROM stories \
+     WHERE stories.merged_story_id = ?";
+    let query_id = MemCache(query);
+    let _records = MemRead(query_id,  MemCreateKey(vec![MemSetUInt(story as u64)]));
+    // c = c
+    //     .drop_exec(
+    //         "SELECT stories.id, stories.merged_story_id \
+    //          FROM stories \
+    //          WHERE stories.merged_story_id = ?",
+    //         (story,),
+    //     )
+    //     .await?;
 
     // the *actual* algorithm for computing hotness isn't all
     // that interesting to us. it does affect what's on the
@@ -144,6 +168,6 @@ where
             ),
         )
         .await?;
-
+    MemUpdate("stories");
     Ok((c, false))
 }
