@@ -24,7 +24,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (format!{"'{}'", ::std::str::from_utf8(&story[..]).unwrap()},),
+            (format!{"{}", ::std::str::from_utf8(&story[..]).unwrap()},),
         )
         .await?;
     let story = story.unwrap();
@@ -48,7 +48,7 @@ where
                 "SELECT comments.* FROM comments \
                  WHERE comments.story_id = ? \
                  AND comments.short_id = ?",
-                (story, format!{"'{}'", ::std::str::from_utf8(&parent[..]).unwrap()}),
+                (story, format!{"{}", ::std::str::from_utf8(&parent[..]).unwrap()}),
             )
             .await?;
         c = x;
@@ -79,7 +79,7 @@ where
             .drop_exec(
                 "SELECT 1 AS `one`, comments.short_id FROM comments \
                  WHERE comments.short_id = ?",
-                (format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},),
+                (format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},),
             )
             .await?;
     }
@@ -100,17 +100,17 @@ where
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)",
             (
                 comment_uid,
-                format!{"'{}'", now},
-                format!{"'{}'", now},
-                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
+                format!{"{}", now},
+                format!{"{}", now},
+                format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},
                 story,
                 user,
                 parent,
                 thread,
-                "'moar benchmarking'", // lorem ipsum?
+                "moar benchmarking", // lorem ipsum?
                 1,
                 1,
-                "'<p>moar benchmarking</p>\n'",
+                "<p>moar benchmarking</p>\n",
             ),
         )
         .await?
@@ -124,15 +124,15 @@ where
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, NULL)",
             (
                 comment_uid,
-                format!{"'{}'", now},
-                format!{"'{}'", now},
-                format!{"'{}'", ::std::str::from_utf8(&id[..]).unwrap()},
+                format!{"{}", now},
+                format!{"{}", now},
+                format!{"{}", ::std::str::from_utf8(&id[..]).unwrap()},
                 story,
                 user,
-                "'moar benchmarking'", // lorem ipsum?
+                "moar benchmarking", // lorem ipsum?
                 1,
                 1,
-                "'<p>moar benchmarking</p>\n'",
+                "<p>moar benchmarking</p>\n",
             ),
         )
         .await?
@@ -240,7 +240,7 @@ where
         )
         .await?;
 
-    let key = format!("'user:{}:comments_posted'", user);
+    let key = format!("user:{}:comments_posted", user);
     c = c
         .drop_exec(
             "REPLACE INTO keystores (keyX, valueX) \

@@ -17,15 +17,23 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
 const PELTON_SCHEMA: &'static str = include_str!("db-schema/pelton.sql");
+const MARIADB_SCHEMA: &'static str = include_str!("db-schema/rocks-mariadb.sql");
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 enum Variant {
     Pelton,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+enum BackendVariant {
+    Pelton,
+    MariaDB,
+}
+
 struct MysqlTrawlerBuilder {
     opts: my::OptsBuilder,
     variant: Variant,
+    backend_variant: BackendVariant,
     stories_counter: Arc<AtomicU32>,
     taggings_counter: Arc<AtomicU32>,
     votes_counter: Arc<AtomicU32>,
@@ -69,6 +77,7 @@ impl Service<bool> for MysqlTrawlerBuilder {
     fn call(&mut self, priming: bool) -> Self::Future {
         let orig_opts = self.opts.clone();
         let variant = self.variant;
+        let backend_variant = self.backend_variant;
         let stories_counter = Arc::clone(&self.stories_counter);
         let taggings_counter = Arc::clone(&self.taggings_counter);
         let votes_counter = Arc::clone(&self.votes_counter);
@@ -86,31 +95,35 @@ impl Service<bool> for MysqlTrawlerBuilder {
                 .to_string();
             opts.db_name(None::<String>);
             opts.prefer_socket(false);
-            // let db_drop = format!("DROP DATABASE IF EXISTS {}", db);
-            // let db_create = format!("CREATE DATABASE {}", db);
-            // let db_use = format!("USE {}", db);
+            let db_drop = format!("DROP DATABASE IF EXISTS {}", db);
+            let db_create = format!("CREATE DATABASE {}", db);
+            let db_use = format!("USE {}", db);
             Box::pin(async move {
-                // let mut c = my::Conn::new(opts).await?;
-                // c = c.drop_query(&db_drop).await?;
-                // c = c.drop_query(&db_create).await?;
-                // c = c.drop_query(&db_use).await?;
-                // let schema = match variant {
-                //     Variant::Pelton => PELTON_SCHEMA,
-                // };
-                // let mut current_q = String::new();
-                // for line in schema.lines() {
-                //     if line.starts_with("--") || line.is_empty() {
-                //         continue;
-                //     }
-                //     if !current_q.is_empty() {
-                //         current_q.push_str(" ");
-                //     }
-                //     current_q.push_str(line);
-                //     if current_q.ends_with(';') {
-                //         c = c.drop_query(&current_q).await?;
-                //         current_q.clear();
-                //     }
-                // }
+                let mut c = my::Conn::new(opts).await?;
+                if backend_variant == BackendVariant::MariaDB{
+                    // TODO(Ishan): Should we support this in pelton's proxy as well?
+                    c = c.drop_query(&db_drop).await?;
+                    c = c.drop_query(&db_create).await?;
+                    c = c.drop_query(&db_use).await?;
+                }
+                let schema = match backend_variant {
+                    BackendVariant::Pelton => PELTON_SCHEMA,
+                    BackendVariant::MariaDB => MARIADB_SCHEMA,
+                };
+                let mut current_q = String::new();
+                for line in schema.lines() {
+                    if line.starts_with("--") || line.is_empty() {
+                        continue;
+                    }
+                    if !current_q.is_empty() {
+                        current_q.push_str(" ");
+                    }
+                    current_q.push_str(line);
+                    if current_q.ends_with(';') {
+                        c = c.drop_query(&current_q).await?;
+                        current_q.clear();
+                    }
+                }
 
                 Ok(MysqlTrawler {
                     c: my::Pool::new(orig_opts.clone()),
@@ -240,7 +253,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                         let (mut c, user) = c
                             .first_exec::<_, _, my::Row>(
                                 "SELECT 1 AS `one` FROM users WHERE users.PII_username = ?",
-                                (format!("'user{}'", acting_as.unwrap()),),
+                                (format!("user{}", acting_as.unwrap()),),
                             )
                             .await?;
 
@@ -257,7 +270,7 @@ impl Service<TrawlerRequest> for MysqlTrawler {
                                     disabled_invite_by_user_id, disabled_invite_reason, settings) \
                                     VALUES (?, ?, 'x@gmail.com', 'asdf', '2021-05-07 18:00', 0, NULL, ?, NULL, NULL, NULL, NULL, NULL, \
                                         NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
-                                    (format!("{}", uid), format!("'user{}'", uid), format!("'session_token_{}'", uid),),
+                                    (format!("{}", uid), format!("user{}", uid), format!("session_token_{}", uid),),
                                 )
                                 .await?;
                         }
@@ -374,6 +387,13 @@ fn main() {
                 .takes_value(true)
                 .required(true)
                 .help("Which set of queries to run"),
+        ).arg(
+            Arg::with_name("backend")
+                .long("backend")
+                .possible_values(&["pelton", "rocks-mariadb"])
+                .takes_value(true)
+                .required(true)
+                .help("Which backend to run pelton queries on"),
         )
         .arg(
             Arg::with_name("runtime")
@@ -401,6 +421,11 @@ fn main() {
 
     let variant = match args.value_of("queries").unwrap() {
         "pelton" => Variant::Pelton,
+        _ => unreachable!(),
+    };
+    let backend_variant = match args.value_of("backend").unwrap() {
+        "pelton" => BackendVariant::Pelton,
+        "rocks-mariadb" => BackendVariant::MariaDB,
         _ => unreachable!(),
     };
     let in_flight = value_t_or_exit!(args, "in-flight", usize);
@@ -434,6 +459,7 @@ fn main() {
 
     let s = MysqlTrawlerBuilder {
         variant,
+        backend_variant,
         opts: opts.into(),
         stories_counter: stories_counter,
         taggings_counter: taggings_counter,

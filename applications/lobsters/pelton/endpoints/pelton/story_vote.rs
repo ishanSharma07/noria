@@ -20,7 +20,7 @@ where
             "SELECT stories.* \
              FROM stories \
              WHERE stories.short_id = ?",
-            (format!{"'{}'", ::std::str::from_utf8(&story[..]).unwrap()},),
+            (format!{"{}", ::std::str::from_utf8(&story[..]).unwrap()},),
         )
         .await?
         .collect_and_drop::<my::Row>()

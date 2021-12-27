@@ -20,7 +20,7 @@ where
             "SELECT comments.* \
              FROM comments \
              WHERE comments.short_id = ?",
-            (format!{"'{}'", ::std::str::from_utf8(&comment[..]).unwrap()},),
+            (format!{"{}", ::std::str::from_utf8(&comment[..]).unwrap()},),
         )
         .await?;
 
