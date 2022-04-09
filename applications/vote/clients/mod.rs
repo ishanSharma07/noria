@@ -19,9 +19,9 @@ where
 }
 
 //pub(crate) mod hybrid;
-pub(crate) mod localsoup;
-pub(crate) mod memcached;
+//pub(crate) mod localsoup;
+//pub(crate) mod memcached;
 //pub(crate) mod mssql;
 pub(crate) mod mysql;
-pub(crate) mod netsoup;
-pub(crate) mod redis;
+//pub(crate) mod netsoup;
+//pub(crate) mod redis;
