@@ -15,7 +15,7 @@ futures-util = "0.3.0"
 hdrhistogram = "7"
 #itertools = "0.9"
 #memcached-rs = "0.4.2"
-mysql_async = "0.23.0"
+mysql_async = "=0.23.1"
 #nom-sql = "0.0.11"
 #noria = { path = "../server", package = "noria-server" }
 num_cpus = "1"
@@ -26,9 +26,9 @@ rand_distr = "0.2"
 #slog = "2.4.0"
 ##slog = { version = "2.4.0", features = ["max_level_trace", "release_max_level_debug"] }
 #slog-term = "2.4.0"
-tokio = { version = "0.2.0", features = ["full"] }
+tokio = { version = "=0.2.25", features = ["full"] }
 #tokio-test = "0.2.0"
-tower-service = "0.3.0"
+tower-service = "=0.3.1"
 #tower-limit = "0.3.1"
 ## need 0.3.1 for https://github.com/tower-rs/tower/pull/427
 #tower-util = "0.3.1"
