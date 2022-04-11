@@ -43,7 +43,7 @@ where
 {
     // zipf takes ~66ns to generate a random number depending on the CPU,
     // so each load generator cannot reasonably generate much more than ~1M reqs/s.
-    let per_generator = 3_000_000;
+    let per_generator = 1_500_000;
     let mut target = value_t_or_exit!(global_args, "ops", f64);
     let ngen = (target as usize + per_generator - 1) / per_generator; // rounded up
     target /= ngen as f64;
@@ -197,6 +197,11 @@ where
             sjrn_w_t.max(),
             rmt_w_t.max()
         );
+        println!(
+            "write\t00\t{:.2}\t{:.2}\t(all µs)",
+            sjrn_w_t.mean(),
+            rmt_w_t.mean()
+        );
     }
     if let Some((rmt_r_t, sjrn_r_t)) = read_t.last() {
         println!(
@@ -218,6 +223,11 @@ where
             "read\t100\t{:.2}\t{:.2}\t(all µs)",
             sjrn_r_t.max(),
             rmt_r_t.max()
+        );
+        println!(
+            "read\t00\t{:.2}\t{:.2}\t(all µs)",
+            sjrn_r_t.mean(),
+            rmt_r_t.mean()
         );
     }
 }
@@ -257,10 +267,7 @@ where
     let mut r_capacity = 128;
 
     let mut rng = rand::thread_rng();
-    let mut rt = tokio::runtime::Builder::new()
-        .basic_scheduler()
-        .build()
-        .unwrap();
+    let ex = &ex;
 
     let start = time::Instant::now();
     let end = start + runtime;
@@ -399,7 +406,7 @@ where
 
         // try to send batches
         if !queued_w.is_empty() {
-            if let Poll::Ready(r) = rt.block_on(async {
+            if let Poll::Ready(r) = ex.block_on(async {
                 futures_util::poll!(futures_util::future::poll_fn(|cx| {
                     Service::<WriteRequest>::poll_ready(&mut handle, cx)
                 }))
@@ -414,7 +421,7 @@ where
         }
 
         if !queued_r.is_empty() {
-            if let Poll::Ready(r) = rt.block_on(async {
+            if let Poll::Ready(r) = ex.block_on(async {
                 futures_util::poll!(futures_util::future::poll_fn(|cx| {
                     Service::<ReadRequest>::poll_ready(&mut handle, cx)
                 }))
@@ -442,7 +449,7 @@ where
     );
 
     // force the client to also complete their queue
-    rt.block_on(async {
+    ex.block_on(async {
         // both poll_ready calls need &mut C, so the borrow checker will get mad. but since we're
         // single-threaded, we know that only one mutable borrow happens _at a time_, so a RefCell
         // takes care of that.
@@ -580,7 +587,12 @@ fn main() {
                         .required(true)
                         .takes_value(true)
                         .help("Soup deployment ID."),
-                ),
+                )
+                .arg(
+                    Arg::with_name("no-join")
+                        .long("no-join")
+                        .help("Run vote without the article join"),
+                )
         )
         .subcommand(
             SubCommand::with_name("memcached")
@@ -653,12 +665,12 @@ fn main() {
         .subcommand(
             SubCommand::with_name("hybrid")
                 .arg(
-                    Arg::with_name("memcached-address")
-                        .long("memcached-address")
+                    Arg::with_name("redis-address")
+                        .long("redis-address")
                         .takes_value(true)
                         .required(true)
-                        .default_value("127.0.0.1:11211")
-                        .help("Address of memcached"),
+                        .default_value("127.0.0.1")
+                        .help("Address of redis server"),
                 )
                 .arg(
                     Arg::with_name("mysql-address")
@@ -669,6 +681,7 @@ fn main() {
                         .help("Address of MySQL server"),
                 )
                 .arg(
+                    /* TODO: remove in favor of giving dbname in db url */
                     Arg::with_name("database")
                         .long("database")
                         .takes_value(true)
@@ -749,13 +762,13 @@ fn main() {
         .get_matches();
 
     match args.subcommand() {
-        //("localsoup", Some(largs)) => run::<clients::localsoup::LocalNoria>(&args, largs),
-        //("netsoup", Some(largs)) => run::<clients::netsoup::Conn>(&args, largs),
-        //("memcached", Some(largs)) => run::<clients::memcached::Conn>(&args, largs),
+        ("localsoup", Some(largs)) => run::<clients::localsoup::LocalNoria>(&args, largs),
+        ("netsoup", Some(largs)) => run::<clients::netsoup::Conn>(&args, largs),
+        ("memcached", Some(largs)) => run::<clients::memcached::Conn>(&args, largs),
         //("mssql", Some(largs)) => run::<clients::mssql::Conf>(&args, largs),
         ("mysql", Some(largs)) => run::<clients::mysql::Conn>(&args, largs),
-        //("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
-        //("hybrid", Some(largs)) => run::<clients::hybrid::Conf>(&args, largs),
+        ("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
+        ("hybrid", Some(largs)) => run::<clients::hybrid::Conn>(&args, largs),
         //("null", Some(largs)) => run::<()>(&args, largs),
         (name, _) => eprintln!("unrecognized backend type '{}'", name),
     }
