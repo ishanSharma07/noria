@@ -53,6 +53,7 @@ where
     let params = Parameters {
         prime: !global_args.is_present("no-prime"),
         articles,
+        mysql_backend: global_args.is_present("mysql"),
     };
 
     let skewed = match global_args.value_of("distribution") {
@@ -663,14 +664,33 @@ fn main() {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("hybrid")
+            SubCommand::with_name("pelton")
                 .arg(
-                    Arg::with_name("redis-address")
-                        .long("redis-address")
+                    Arg::with_name("address")
+                        .long("address")
                         .takes_value(true)
                         .required(true)
-                        .default_value("127.0.0.1")
-                        .help("Address of redis server"),
+                        .default_value("127.0.0.1:10001")
+                        .help("Address of MySQL server"),
+                )
+                .arg(
+                    Arg::with_name("database")
+                        .long("database")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("soup")
+                        .help("MySQL database to use"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("memcached-hybrid")
+                .arg(
+                    Arg::with_name("memcached-address")
+                        .long("memcached-address")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("127.0.0.1:11211")
+                        .help("Address of memcached server"),
                 )
                 .arg(
                     Arg::with_name("mysql-address")
@@ -764,12 +784,15 @@ fn main() {
     match args.subcommand() {
         //("localsoup", Some(largs)) => run::<clients::localsoup::LocalNoria>(&args, largs),
         //("netsoup", Some(largs)) => run::<clients::netsoup::Conn>(&args, largs),
-        //("memcached", Some(largs)) => run::<clients::memcached::Conn>(&args, largs),
+        ("memcached", Some(largs)) => run::<clients::memcached::Conn>(&args, largs),
         //("mssql", Some(largs)) => run::<clients::mssql::Conf>(&args, largs),
         ("mysql", Some(largs)) => run::<clients::mysql::Conn>(&args, largs),
+        ("pelton", Some(largs)) => run::<clients::pelton::Conn>(&args, largs),
+        ("memcached-hybrid", Some(largs)) => run::<clients::memcached_hybrid::Conn>(&args, largs),
         //("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
         //("hybrid", Some(largs)) => run::<clients::hybrid::Conn>(&args, largs),
         //("null", Some(largs)) => run::<()>(&args, largs),
+
         (name, _) => eprintln!("unrecognized backend type '{}'", name),
     }
 }

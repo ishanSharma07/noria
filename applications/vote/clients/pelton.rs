@@ -5,11 +5,14 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower_service::Service;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU32;
 
 pub(crate) struct Conn {
     pool: mysql_async::Pool,
     next: Option<mysql_async::Conn>,
     pending: Option<mysql_async::futures::GetConn>,
+    vt_counter: Arc<AtomicU32>,
 }
 
 impl Clone for Conn {
@@ -18,6 +21,7 @@ impl Clone for Conn {
             pool: self.pool.clone(),
             next: None,
             pending: None,
+            vt_counter: self.vt_counter.clone(),
         }
     }
 }
@@ -52,7 +56,7 @@ impl VoteClient for Conn {
     fn new(params: Parameters, args: clap::ArgMatches<'_>) -> <Self as VoteClient>::Future {
         let addr = args.value_of("address").unwrap();
         let addr = format!("mysql://pelton:password@{}", addr);
-        let db = args.value_of("database").unwrap().to_string();
+        let _db = args.value_of("database").unwrap().to_string();
 
         async move {
             let opts = mysql_async::Opts::from_url(&addr).unwrap();
@@ -64,62 +68,82 @@ impl VoteClient for Conn {
                 //    "SET max_heap_table_size = 4294967296;",
                 //    "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;",
                 //]);
-                let mut conn = mysql_async::Conn::new(opts).await.unwrap();
-                let workaround = format!("DROP DATABASE IF EXISTS {}", &db);
-                conn = conn.drop_query(&workaround).await.unwrap();
-                let workaround = format!("CREATE DATABASE {}", &db);
-                conn = conn.drop_query(&workaround).await.unwrap();
+                let mut conn = mysql_async::Conn::new(opts.clone()).await.unwrap();
+                //let workaround = format!("DROP DATABASE IF EXISTS {}", &db);
+                //conn = conn.drop_query(&workaround).await.unwrap();
+                //let workaround = format!("CREATE DATABASE {}", &db);
+                //conn = conn.drop_query(&workaround).await.unwrap();
 
                 // create tables with indices
-                let workaround = format!("USE {}", db);
-                conn = conn.drop_query(&workaround).await.unwrap();
+                //let workaround = format!("USE {}", db);
+                //conn = conn.drop_query(&workaround).await.unwrap();
+                // Set database fot prepared_conn as well.
+                let prepared_conn = mysql_async::Conn::new(opts.clone()).await.unwrap();
+
                 conn = conn
-                    .drop_exec(
+                    .drop_query(
                         "CREATE TABLE art (id int NOT NULL PRIMARY KEY, title varchar(16) NOT NULL) ENGINE = ROCKSDB",
-                        (),
                     )
                     .await
                     .unwrap();
                 conn = conn
-                    .drop_exec(
-                        "CREATE TABLE vt (id int NOT NULL PRIMARY KEY AUTO_INCREMENT, u int NOT NULL, article_id int NOT NULL REFERENCES art(id)) ENGINE = ROCKSDB",
-                        (),
+                    .drop_query(
+                        "CREATE TABLE vt (id int NOT NULL PRIMARY KEY AUTO_INCREMENT, u int NOT NULL, article_id int NOT NULL) ENGINE = ROCKSDB",
+                    )
+                    .await
+                    .unwrap();
+                prepared_conn
+                    .prepare(
+                        "SELECT art.id, art.title, count(*) as votes \
+                        FROM art \
+                        JOIN vt ON art.id = vt.article_id \
+                        GROUP BY art.id, art.title \
+                        HAVING art.id = ?;"
                     )
                     .await
                     .unwrap();
 
                 // prepop
-                let mut aid = 1;
-                let bs = 1000;
-                assert_eq!(params.articles % bs, 0);
-                for _ in 0..params.articles / bs {
-                    let mut sql = String::new();
-                    sql.push_str("INSERT INTO art (id, title) VALUES ");
-                    for i in 0..bs {
-                        if i != 0 {
-                            sql.push_str(", ");
-                        }
-                        sql.push_str("(");
-                        sql.push_str(&format!("{}, 'Article #{}')", aid, aid));
-                        aid += 1;
-                    }
-                    conn = conn.drop_query(sql).await.unwrap();
+                // NOTE: Not batching here since pelton does not support it.
+                for aid in 0..params.articles{
+                        conn = conn.drop_exec(
+                            "INSERT INTO art (id, title) VALUES (?, ?)",
+                            (aid, format!("Article #{}", aid),),
+                        ).await?;
                 }
+                //let mut aid = 1;
+                //let bs = 1000;
+                //assert_eq!(params.articles % bs, 0);
+                //for _ in 0..params.articles / bs {
+                //    let mut sql = String::new();
+                //    sql.push_str("INSERT INTO art (id, title) VALUES ");
+                //    for i in 0..bs {
+                //        if i != 0 {
+                //            sql.push_str(", ");
+                //        }
+                //        conn = conn.drop
+                //        sql.push_str("(");
+                //        sql.push_str(&format!("{}, 'Article #{}')", aid, aid));
+                //        aid += 1;
+                //    }
+                //    conn = conn.drop_query(sql).await.unwrap();
+                //}
             }
 
             // now we connect for real
-            let mut opts = mysql_async::OptsBuilder::from_opts(opts);
-            opts.db_name(Some(db));
+            let opts = mysql_async::OptsBuilder::from_opts(opts);
+            //opts.db_name(Some(db));
             //opts.init(vec![
             //    "SET max_heap_table_size = 4294967296;",
-            //    "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;",
+            //    //"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;",
             //]);
-            opts.stmt_cache_size(10000);
+            //opts.stmt_cache_size(10000);
 
             Ok(Conn {
                 pool: mysql_async::Pool::new(opts),
                 next: None,
                 pending: None,
+                vt_counter: Arc::new(AtomicU32::new(0)),
             })
         }
     }
@@ -140,7 +164,7 @@ impl Service<ReadRequest> for Conn {
             let len = req.0.len();
             let ids = req.0.iter().map(|a| a as &_).collect::<Vec<_>>();
             let vals = (0..len).map(|_| "?").collect::<Vec<_>>().join(",");
-            let qstring = format!("SELECT art.id, art.title, count(*) as votes FROM art JOIN vt ON art.id = vt.article_id GROUP BY vt.article_id HAVING art.id IN ({})", vals);
+            let qstring = format!("SELECT art.id, art.title, count(*) as votes FROM art JOIN vt ON art.id = vt.article_id GROUP BY art.id, art.title HAVING art.id IN ({})", vals);
 
             let qresult = conn.prep_exec(qstring, &ids).await.unwrap();
             let (_, rows) = qresult
@@ -171,15 +195,19 @@ impl Service<WriteRequest> for Conn {
             //let len = req.0.len();
             let ids = req.0.iter().map(|a| a as &_).collect::<Vec<_>>();
             if ids.len() == 0{
-                println!("WriteRequest with 0 ids supplied...returning from future.")
+                println!("WriteRequest with 0 ids supplied...returning from future");
+                return Ok(());
             }
+            //let vals = (0..len).map(|_| "(0, ?)").collect::<Vec<_>>().join(", ");
             for article_id in ids.iter() {
+                if ids.len() == 0{
+                    break;
+                }
                 conn = conn.drop_exec(
                     "INSERT INTO vt (u, article_id) VALUES (0, ?)",
                     (article_id,),
                 ).await?;
             }
-            //let vals = (0..len).map(|_| "(0, ?)").collect::<Vec<_>>().join(", ");
             //let vote_qstring = format!("INSERT INTO vt (u, article_id) VALUES {}", vals);
             //conn.drop_exec(vote_qstring, &ids).await.unwrap();
             Ok(())

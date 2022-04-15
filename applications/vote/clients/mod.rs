@@ -5,6 +5,8 @@ use std::future::Future;
 pub(crate) struct Parameters {
     pub(crate) prime: bool,
     pub(crate) articles: usize,
+    // The following parameter is only used for pelton.
+    pub(crate) mysql_backend: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -23,8 +25,10 @@ where
 
 //pub(crate) mod hybrid;
 //pub(crate) mod localsoup;
-//pub(crate) mod memcached;
+pub(crate) mod memcached;
 //pub(crate) mod mssql;
 pub(crate) mod mysql;
+pub(crate) mod pelton;
+pub(crate) mod memcached_hybrid;
 //pub(crate) mod netsoup;
 //pub(crate) mod redis;
