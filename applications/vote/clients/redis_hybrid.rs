@@ -62,7 +62,7 @@ impl VoteClient for Conn {
     type Future = impl Future<Output = Result<Self, failure::Error>> + Send;
     fn new(params: Parameters, args: clap::ArgMatches<'_>) -> <Self as VoteClient>::Future {
         let my_addr = args.value_of("mysql-address").unwrap();
-        let my_addr = format!("mysql://{}", my_addr);
+        let my_addr = format!("mysql://pelton:password@{}", my_addr);
         let db = args.value_of("database").unwrap().to_string();
         let r_addr = args.value_of("redis-address").unwrap();
         let connstr = format!("redis://{}/", r_addr);
