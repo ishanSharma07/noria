@@ -846,8 +846,8 @@ fn main() {
         ("pelton", Some(largs)) => run::<clients::pelton::Conn>(&args, largs),
         ("memcached-hybrid", Some(largs)) => run::<clients::memcached_hybrid::Conn>(&args, largs),
         ("redis-hybrid", Some(largs)) => run::<clients::redis_hybrid::Conn>(&args, largs),
-        //("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
-        //("hybrid", Some(largs)) => run::<clients::hybrid::Conn>(&args, largs),
+        ("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
+        ("hybrid", Some(largs)) => run::<clients::hybrid::Conn>(&args, largs),
         //("null", Some(largs)) => run::<()>(&args, largs),
 
         (name, _) => eprintln!("unrecognized backend type '{}'", name),
