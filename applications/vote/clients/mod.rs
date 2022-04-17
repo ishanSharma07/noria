@@ -23,12 +23,13 @@ where
     fn new(params: Parameters, args: clap::ArgMatches) -> <Self as VoteClient>::Future;
 }
 
-//pub(crate) mod hybrid;
+pub(crate) mod hybrid;
 //pub(crate) mod localsoup;
 pub(crate) mod memcached;
 //pub(crate) mod mssql;
 pub(crate) mod mysql;
 pub(crate) mod pelton;
 pub(crate) mod memcached_hybrid;
+pub(crate) mod redis_hybrid;
 //pub(crate) mod netsoup;
 //pub(crate) mod redis;

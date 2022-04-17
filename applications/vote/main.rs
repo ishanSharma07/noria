@@ -711,6 +711,62 @@ fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("hybrid")
+                .arg(
+                    Arg::with_name("redis-address")
+                        .long("redis-address")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("127.0.0.1")
+                        .help("Address of redis server"),
+                )
+                .arg(
+                    Arg::with_name("mysql-address")
+                        .long("mysql-address")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("127.0.0.1:3306")
+                        .help("Address of MySQL server"),
+                )
+                .arg(
+                    /* TODO: remove in favor of giving dbname in db url */
+                    Arg::with_name("database")
+                        .long("database")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("soup")
+                        .help("MySQL database to use"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("redis-hybrid")
+                .arg(
+                    Arg::with_name("redis-address")
+                        .long("redis-address")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("127.0.0.1")
+                        .help("Address of redis server"),
+                )
+                .arg(
+                    Arg::with_name("mysql-address")
+                        .long("mysql-address")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("127.0.0.1:3306")
+                        .help("Address of MySQL server"),
+                )
+                .arg(
+                    /* TODO: remove in favor of giving dbname in db url */
+                    Arg::with_name("database")
+                        .long("database")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("soup")
+                        .help("MySQL database to use"),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("localsoup")
                 .arg(
                     Arg::with_name("shards")
@@ -789,6 +845,7 @@ fn main() {
         ("mysql", Some(largs)) => run::<clients::mysql::Conn>(&args, largs),
         ("pelton", Some(largs)) => run::<clients::pelton::Conn>(&args, largs),
         ("memcached-hybrid", Some(largs)) => run::<clients::memcached_hybrid::Conn>(&args, largs),
+        ("redis-hybrid", Some(largs)) => run::<clients::redis_hybrid::Conn>(&args, largs),
         //("redis", Some(largs)) => run::<clients::redis::Conn>(&args, largs),
         //("hybrid", Some(largs)) => run::<clients::hybrid::Conn>(&args, largs),
         //("null", Some(largs)) => run::<()>(&args, largs),
