@@ -286,7 +286,7 @@ impl Service<ReadRequest> for RedisConn {
                     Ok(vec![req.0[0]])
                 }
             } else {
-                let rows: Vec<Option<i32>> = conn.get(&req.0[..]).await?;
+                let rows: Vec<Option<String>> = conn.get(&req.0[..]).await?;
                 assert_eq!(rows.len(), len);
                 let mut misses = Vec::new();
                 for (req, res) in req.0.into_iter().zip(rows) {
