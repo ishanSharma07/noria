@@ -279,7 +279,7 @@ impl Service<ReadRequest> for RedisConn {
         async move {
             if req.0.len() == 1 {
                 // https://github.com/mitsuhiko/redis-rs/issues/336
-                let r: Option<i32> = conn.get(req.0[0]).await?;
+                let r: Option<String> = conn.get(req.0[0]).await?;
                 if r.is_some() {
                     Ok(vec![])
                 } else {
